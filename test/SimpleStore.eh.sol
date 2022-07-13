@@ -6,7 +6,7 @@ import "forge-std/Test.sol";
 import "forge-std/console.sol";
 
 contract SimpleStoreTest is Test {
-    /// @dev Address of the SimpleStore contract.  
+    /// @dev Address of the SimpleStore contract.
     SimpleStore public simpleStore;
 
     /// @dev Setup the testing environment.
@@ -15,12 +15,12 @@ contract SimpleStoreTest is Test {
     }
 
     /// @dev Ensure that you can set and get the value.
-    function testSetAndGetValue(uint256 value) public {
-        simpleStore.setValue(value);
-        console.log(value);
-        console.log(simpleStore.getValue());
-        assertEq(value, simpleStore.getValue());
-    }
+    // function testSetAndGetValue(uint256 value) public {
+    //     simpleStore.setValue(value);
+    //     console.log(value);
+    //     console.log(simpleStore.getValue());
+    //     assertEq(value, simpleStore.getValue());
+    // }
 }
 
 interface SimpleStore {
