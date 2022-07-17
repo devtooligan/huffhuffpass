@@ -30,59 +30,58 @@ contract ERC20Test is Test {
         assertEq(token.decimals(), 18);
     }
 
-    // function invariantMetadata() public {
     function testMint() public {
         assertEq(token.totalSupply(), 0);
         assertEq(token.balanceOf(bob), 0);
         token.mint(bob, 1e18);
         assertEq(token.totalSupply(), 1e18);
         assertEq(token.balanceOf(bob), 1e18);
+
     }
 
 
-    // function testBurn() public {
-    //     token.mint(bob, 1e18);
-    //     assertEq(token.balanceOf(bob), 1e18);
-    //     // token.burn(bob, 0.9e18);
+    function testBurn() public {
+        token.mint(bob, 1e18);
+        assertEq(token.balanceOf(bob), 1e18);
+        token.burn(bob, 0.5e18);
 
-    //     // assertEq(token.totalSupply(), 1e18 - 0.9e18);
-    //     // assertEq(token.balanceOf(address(0xBEEF)), 0.1e18);
-    // }
+        assertEq(token.balanceOf(bob), 0.5e18);
+        assertEq(token.totalSupply(), 0.5e18);
+    }
+
+    function testApprove() public {
+        assertTrue(token.approve(address(0xBEEF), 1e18));
+        assertEq(token.allowance(address(this), address(0xBEEF)), 1e18);
+    }
+
+
+    function testTransfer() public {
+        token.mint(address(this), 1e18);
+
+        assertTrue(token.transfer(address(0xBEEF), 1e18));
+        assertEq(token.totalSupply(), 1e18);
+
+        assertEq(token.balanceOf(address(this)), 0);
+        assertEq(token.balanceOf(address(0xBEEF)), 1e18);
+    }
+
+    function testTransferFrom() public {
+        // address from = address(0xABCD);
+
+        // token.mint(from, 1e18);
+
+        // vm.prank(from);
+        // token.approve(address(this), 1e18);
+
+        // assertTrue(token.transferFrom(from, address(0xBEEF), 1e18));
+        // assertEq(token.totalSupply(), 1e18);
+
+        // assertEq(token.allowance(from, address(this)), 0);
+
+        // assertEq(token.balanceOf(from), 0);
+        // assertEq(token.balanceOf(address(0xBEEF)), 1e18);
+    }
 }
-
-//     function testApprove() public {
-//         assertTrue(token.approve(address(0xBEEF), 1e18));
-
-//         assertEq(token.allowance(address(this), address(0xBEEF)), 1e18);
-//     }
-
-//     function testTransfer() public {
-//         token.mint(address(this), 1e18);
-
-//         assertTrue(token.transfer(address(0xBEEF), 1e18));
-//         assertEq(token.totalSupply(), 1e18);
-
-//         assertEq(token.balanceOf(address(this)), 0);
-//         assertEq(token.balanceOf(address(0xBEEF)), 1e18);
-//     }
-
-//     function testTransferFrom() public {
-//         address from = address(0xABCD);
-
-//         token.mint(from, 1e18);
-
-//         hevm.prank(from);
-//         token.approve(address(this), 1e18);
-
-//         assertTrue(token.transferFrom(from, address(0xBEEF), 1e18));
-//         assertEq(token.totalSupply(), 1e18);
-
-//         assertEq(token.allowance(from, address(this)), 0);
-
-//         assertEq(token.balanceOf(from), 0);
-//         assertEq(token.balanceOf(address(0xBEEF)), 1e18);
-//     }
-
 //     function testInfiniteApproveTransferFrom() public {
 //         address from = address(0xABCD);
 
