@@ -3,7 +3,7 @@
 - Fully functional ERC20 (includes eip-2612) written in [Huff](https://docs.huff.sh/) (based on [Solmate](https://github.com/Rari-Capital/solmate/blob/main/src/tokens/ERC20.sol)).
 - Passes all Solmate tests (except for invariant tests -- DappTools not supported in this repo).
 - Includes `transferFrom()` and `permit()` functions, which are not included in any currently available implementations that I've seen.
-
+- Because there's no `immutables` in Huff, meta data that is available in advance (name, symbol, decimals) is hardcoded into the fns.  ChainID and INITIAL_DOMAIN_SEPARATOR use storage.
 
 TODO:
 
