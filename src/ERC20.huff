@@ -41,9 +41,9 @@
 #define constant INITIAL_DOMAIN_SEPARATOR = FREE_STORAGE_POINTER()
 
 /* Constants */
-#define constant META_NAME = 0x05546f6b656e                                    // "Token" // ISSUE: string converter fn
-#define constant META_SYMBOL = 0x03544B4E                                      // "TKN"
-#define constant META_DECIMALS = 0x12                                          // 18
+#define constant META_NAME = 0x05546f6b656e // "Token" // ISSUE: string converter fn
+#define constant META_SYMBOL = 0x03544B4E // "TKN"
+#define constant META_DECIMALS = 0x12 // 18
 #define constant PERMIT_TYPEHASH = 0x6e71edae12b1b97f4d1f60370fef10105fa2faae0126114a169c64845d6126c9 // keccak256("Permit(address owner,address spender,uint256 value,uint256 nonce,uint256 deadline)")
 #define constant UINT_256_MAX = 0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
 #define constant X_1901 = 0x1901000000000000000000000000000000000000000000000000000000000000
@@ -51,8 +51,8 @@
 /* Constructor */
 
 #define macro CONSTRUCTOR() = takes(0) returns (0) {
-    OWNABLE_CONSTRUCTOR()                                                       // []
-    chainid [INITIAL_CHAIN_ID] sstore                                           // []
+    OWNABLE_CONSTRUCTOR()                                                      // []
+    chainid [INITIAL_CHAIN_ID] sstore                                          // []
     COMPUTE_DOMAIN_SEPARATOR()                                                 // [DOMAIN SEPARATOR]
     [INITIAL_DOMAIN_SEPARATOR] sstore                                          // []
 }
@@ -93,8 +93,8 @@
 
 #define macro DOMAIN_SEPARATOR() = takes (0) returns (0) {
     _DOMAIN_SEPARATOR()
-    0x00 mstore                                 // [domain separator]
-    0x20 0x00 return                            // []
+    0x00 mstore                                                                // [domain separator]
+    0x20 0x00 return                                                           // []
 }
 
 // (internal) takes an address off the stack, returns the current nonce for that address onto the stack.
@@ -114,7 +114,7 @@
 
 
 #define macro PERMIT() = takes (0) returns (0) {
-    // function permit(
+    // permit() fn sig for reference:
     //     address owner, //       0x04
     //     address spender, //     0x24
     //     uint256 value, //       0x44
@@ -154,8 +154,8 @@
     0x02 mstore  // note: abi.encodePacked                                     // [inner hash]
     0x22 mstore                                                                // []
     0x42 0x00                                                                  // [loc, len]
-    sha3                                                                       // [outer hash]      __memory layout____________________
-
+    sha3                                                                       // [outer hash]
+                                                                               //                   memory layout:
     0x00 mstore                                                                // []                0x00 outer hash
     0x84 calldataload                                                          // [v]
     0x20 mstore                                                                // []                0x00 outerhash 0x20 v
@@ -188,7 +188,7 @@
     // // check for address is owner
     dup1                                                                       // [recovered address, recovered address, spender, value]
     0x04 calldataload                                                          // [owner, recovered address, recovered address, spender, value]
-    eq                                                                    // [owner == recovered address, recovered address, spender, value]
+    eq                                                                         // [owner == recovered address, recovered address, spender, value]
     iszero                                                                     // [owner != recovered address, recovered address, spender, value]
     invalidSigner jumpi                                                        // [recovered address, spender, value]
 
@@ -199,12 +199,8 @@
     0x00 0x00 return
 
     expired:
-    0x69 0x00 mstore // todo change these all to 0x0 0x0 revert for now
-    0x20 0x00 revert
-
-    invalidSigner:
-    0x67 0x00 mstore
-    0x20 0x00 revert
+    invalidSigner:  // todo: add revert strings
+    0x00 0x00 revert
 }
 
 #define macro NONCES() = takes (0) returns (0) {
@@ -248,6 +244,8 @@
     0x20 0x00 return                                                           // []
 }
 
+/* Approval Function */
+
 #define macro ALLOWANCE() = takes (0) returns (0) {
     0x24 calldataload                                                          // [to]
     0x04 calldataload                                                          // [from, to]
@@ -256,44 +254,6 @@
 
     0x00 mstore
     0x20 0x00 return
-}
-
-
-/* Transfer Functions */
-#define macro TRANSFER_TAKE_FROM() = takes(3) returns (3) {
-    // Ensure that the sender has a sufficient balance.
-    // input stack: [value, from, to]
-    dup2 [BALANCE_LOCATION] LOAD_ELEMENT_FROM_KEYS(0x00)                       // [balance, value, from, to]                                                // [from, value, from, to]
-    dup1                                                                       // [balance, balance, value, from, to]
-    dup3                                                                       // [value, balance, balance, value, from, to]
-    gt                                                                         // [value>balance, balance, value, from, to]
-    iszero                                                                     // [value<=balance, balance, value, from, to]
-    valid jumpi                                                                // [balance, value, from, to]
-
-    // insufficient balance
-    0x00 0x00 revert
-
-    // // Update the sender's balance.
-    // input stack: [balance, value, from, to]
-    valid:
-    dup2                                                                       // [value, balance, value, from, to]
-    swap1                                                                      // [balance, value, value, from, to]
-    sub                                                                        // [balance - value, value, from, to]
-    dup3                                                                       // [from, balance-value, value, from, to]
-    [BALANCE_LOCATION] STORE_ELEMENT_FROM_KEYS(0x00)                           // [value, from, to]
-}
-
-// TODO: OVERFLOW CHECK?
-#define macro TRANSFER_GIVE_TO() = takes(3) returns (0) {
-    // Update the balance of the recipient.
-    // input stack: [value, from, to]
-    dup3                                                                       // [to, value, from, to]
-    dup2                                                                       // [value, to, value, from, to]
-    swap1                                                                      // [to, value, value, from, to]
-    [BALANCE_LOCATION] LOAD_ELEMENT_FROM_KEYS(0x00)                            // [balance, value, value, from, to]
-    add                                                                        // [balance+value, value, from, to]
-    dup4                                                                       // [to, balance+value, value, from, to]
-    [BALANCE_LOCATION] STORE_ELEMENT_FROM_KEYS(0x00)                           // [value, from, to]
 }
 
 #define macro APPROVE() = takes (0) returns (0) {
@@ -306,6 +266,8 @@
     0x20 0x00 return
 }
 
+/* Transfer Functions */
+
 #define macro TRANSFER() = takes(0) returns(1) {
     // Setup the stack for the transfer function.
     0x04 calldataload                                                          // [to]
@@ -313,8 +275,8 @@
     0x24 calldataload                                                          // [value, from, to]
 
     // Update the balances of the sender and recipient.
-    TRANSFER_TAKE_FROM()                                                       // [value, from, to]
-    TRANSFER_GIVE_TO()                                                         // [value, from, to]
+    _TRANSFER_TAKE_FROM()                                                       // [value, from, to]
+    _TRANSFER_GIVE_TO()                                                         // [value, from, to]
 
     // Emit the transfer event. // TODO consider macro
     0x00 mstore                                                                // [from, to]
@@ -360,8 +322,8 @@
     0x44 calldataload                                                          // [value, from, to]
 
     // Update the balances of the sender and recipient.
-    TRANSFER_TAKE_FROM()                                                       // [value, from, to]
-    TRANSFER_GIVE_TO()                                                         // [value, from, to]
+    _TRANSFER_TAKE_FROM()                                                       // [value, from, to]
+    _TRANSFER_GIVE_TO()                                                         // [value, from, to]
 
     // Emit the transfer event. // TODO consider macro
     0x00 mstore                                                                // [from, to]
@@ -377,6 +339,43 @@
         0x00 0x00 revert
 }
 
+#define macro _TRANSFER_TAKE_FROM() = takes(3) returns (3) {
+    // Ensure that the sender has a sufficient balance.
+    // input stack: [value, from, to]
+    dup2 [BALANCE_LOCATION] LOAD_ELEMENT_FROM_KEYS(0x00)                       // [balance, value, from, to]                                                // [from, value, from, to]
+    dup1                                                                       // [balance, balance, value, from, to]
+    dup3                                                                       // [value, balance, balance, value, from, to]
+    gt                                                                         // [value>balance, balance, value, from, to]
+    iszero                                                                     // [value<=balance, balance, value, from, to]
+    valid jumpi                                                                // [balance, value, from, to]
+
+    // insufficient balance
+    0x00 0x00 revert
+
+    // // Update the sender's balance.
+    // input stack: [balance, value, from, to]
+    valid:
+    dup2                                                                       // [value, balance, value, from, to]
+    swap1                                                                      // [balance, value, value, from, to]
+    sub                                                                        // [balance - value, value, from, to]
+    dup3                                                                       // [from, balance-value, value, from, to]
+    [BALANCE_LOCATION] STORE_ELEMENT_FROM_KEYS(0x00)                           // [value, from, to]
+}
+
+// TODO: OVERFLOW CHECK?
+#define macro _TRANSFER_GIVE_TO() = takes(3) returns (0) {
+    // Update the balance of the recipient.
+    // input stack: [value, from, to]
+    dup3                                                                       // [to, value, from, to]
+    dup2                                                                       // [value, to, value, from, to]
+    swap1                                                                      // [to, value, value, from, to]
+    [BALANCE_LOCATION] LOAD_ELEMENT_FROM_KEYS(0x00)                            // [balance, value, value, from, to]
+    add                                                                        // [balance+value, value, from, to]
+    dup4                                                                       // [to, balance+value, value, from, to]
+    [BALANCE_LOCATION] STORE_ELEMENT_FROM_KEYS(0x00)                           // [value, from, to]
+}
+
+
 /* Permissioned Functions */
 
 #define macro BURN() = takes(0) returns (0) {
@@ -384,7 +383,7 @@
     0x00                                                                       // [to (0x00)]
     0x04 calldataload                                                          // [from, to]
     0x24 calldataload                                                          // [value, from, to]
-    TRANSFER_TAKE_FROM()                                                       // [value, from, to]
+    _TRANSFER_TAKE_FROM()                                                       // [value, from, to]
 
     dup1                                                                       // [value, value, from, to]
     [TOTAL_SUPPLY_LOCATION] sload                                              // [supply,value,value,from,to]
@@ -411,7 +410,7 @@
     0x24 calldataload                                                          // [value, from, to]
 
     // Give tokens to the recipient.
-    TRANSFER_GIVE_TO()                                                         // [value, from, to]
+    _TRANSFER_GIVE_TO()                                                         // [value, from, to]
 
     // Update totalSupply
     dup1                                                                       // [value, value, from, to]
