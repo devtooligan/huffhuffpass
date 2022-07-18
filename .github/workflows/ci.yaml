@@ -1,9 +1,10 @@
-name: Tests
+name: ci
 
 on: [push]
 
 jobs:
   tests:
+    name: Tests with Foundry
     runs-on: ubuntu-latest
 
     steps:
