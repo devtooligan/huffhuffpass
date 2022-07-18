@@ -407,10 +407,10 @@
 
 
     // Emit the transfer event.
-    0x00 mstore                 // [from, to]
-    [TRANSFER_EVENT_SIGNATURE]  // [sig, from, to]
-    0x20 0x00                   // [0, 32, sig, from, to]
-    log3                        // []
+    0x00 mstore                                                                // [from, to]
+    [TRANSFER_EVENT_SIGNATURE]                                                 // [sig, from, to]
+    0x20 0x00                                                                  // [0, 32, sig, from, to]
+    log3                                                                       // []
 
     0x00 0x00 return
 }
