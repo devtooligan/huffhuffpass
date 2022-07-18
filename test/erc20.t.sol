@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-only
-pragma solidity 0.8.13;
+pragma solidity 0.8.15;
 
 // import {DSTestPlus} from "./utils/DSTestPlus.sol";
 // import {DSInvariantTest} from "./utils/DSInvariantTest.sol";
@@ -66,38 +66,48 @@ contract ERC20Test is Test {
     }
 
     function testTransferFrom() public {
-        // address from = address(0xABCD);
+        address from = address(0xABCD);
 
-        // token.mint(from, 1e18);
+        token.mint(from, 1e18);
 
-        // vm.prank(from);
-        // token.approve(address(this), 1e18);
+        console.log('token.allowance(from, address(this))', token.allowance(from, address(this)));
+        vm.prank(from);
+        token.approve(address(this), 1e18);
 
-        // assertTrue(token.transferFrom(from, address(0xBEEF), 1e18));
-        // assertEq(token.totalSupply(), 1e18);
+        console.log('token.balanceOf(from)', token.balanceOf(from));
+        console.log('token.balanceOf(address(this))', token.balanceOf(address(this)));
+        console.log('token.balanceOf(address(0xbeef))', token.balanceOf(address(0xbeef)));
+        console.log('token.allowance(from, address(this))', token.allowance(from, address(this)));
+        console.log("token.transferFrom(from, address(0xBEEF), 1e18)");
+        assertTrue(token.transferFrom(from, address(0xBEEF), 1e18));
+        console.log('token.balanceOf(from)', token.balanceOf(from));
+        console.log('token.balanceOf(address(this))', token.balanceOf(address(this)));
+        console.log('token.balanceOf(address(0xbeef))', token.balanceOf(address(0xbeef)));
 
-        // assertEq(token.allowance(from, address(this)), 0);
+        assertEq(token.totalSupply(), 1e18);
+        console.log('token.allowance(from, address(this))', token.allowance(from, address(this)));
+        assertEq(token.allowance(from, address(this)), 0);
 
-        // assertEq(token.balanceOf(from), 0);
-        // assertEq(token.balanceOf(address(0xBEEF)), 1e18);
+        assertEq(token.balanceOf(from), 0);
+        assertEq(token.balanceOf(address(0xBEEF)), 1e18);
+    }
+    function testInfiniteApproveTransferFrom() public {
+        address from = address(0xABCD);
+
+        token.mint(from, 1e18);
+
+        vm.prank(from);
+        token.approve(address(this), type(uint256).max);
+
+        assertTrue(token.transferFrom(from, address(0xBEEF), 1e18));
+        assertEq(token.totalSupply(), 1e18);
+
+        assertEq(token.allowance(from, address(this)), type(uint256).max);
+
+        assertEq(token.balanceOf(from), 0);
+        assertEq(token.balanceOf(address(0xBEEF)), 1e18);
     }
 }
-//     function testInfiniteApproveTransferFrom() public {
-//         address from = address(0xABCD);
-
-//         token.mint(from, 1e18);
-
-//         hevm.prank(from);
-//         token.approve(address(this), type(uint256).max);
-
-//         assertTrue(token.transferFrom(from, address(0xBEEF), 1e18));
-//         assertEq(token.totalSupply(), 1e18);
-
-//         assertEq(token.allowance(from, address(this)), type(uint256).max);
-
-//         assertEq(token.balanceOf(from), 0);
-//         assertEq(token.balanceOf(address(0xBEEF)), 1e18);
-//     }
 
 //     function testPermit() public {
 //         uint256 privateKey = 0xBEEF;
