@@ -23,6 +23,12 @@ interface IERC20 {
     function decimals() external view returns (uint);
 
 
+    function DOMAIN_SEPARATOR() external view returns (bytes32);
+
+    function permit(address, address, uint256, uint256, uint8, bytes32, bytes32) external;
+
+    function nonces(address) external returns (uint256);
+
     /**
      * @dev Emitted when `value` tokens are moved from one account (`from`) to
      * another (`to`).

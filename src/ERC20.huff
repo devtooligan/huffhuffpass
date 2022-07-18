@@ -1,59 +1,219 @@
+/// @author devtooligan
+/// @title ERC20.huff
+/// @notice Adapted from Solmate
+/// https://github.com/Rari-Capital/solmate/blob/main/src/tokens/ERC20.sol
+
+
 /* Imports */
 #include "./utils/Ownable.huff"
-#include "./utils/Address.huff"
-#include "./utils/Utils.huff"
 #include "./utils/HashMap.huff"
 
 /* Interface */
-#define function mint(address,uint256) nonpayable returns ()
+#define function allowance(address,address) view returns (uint256)
+#define function approve(address,uint256) nonpayable returns () // these returns sb updated
+#define function balanceOf(address) view returns (uint256)
 #define function burn(address,uint256) nonpayable returns ()
-#define function name() nonpayable returns (string)
-#define function symbol() nonpayable returns (string)
 #define function decimals() nonpayable returns (uint256)
+#define function DOMAIN_SEPARATOR() view returns (bytes32)
+#define function mint(address,uint256) nonpayable returns ()
+#define function name() nonpayable returns (string)
+#define function nonces(address) view returns (uint256)
+#define function permit(address,address,uint256,uint256,uint8,bytes32,bytes32) nonpayable returns ()
+#define function symbol() nonpayable returns (string)
+#define function totalSupply() view returns (uint256)
 #define function transfer(address,uint256) nonpayable returns ()
 #define function transferFrom(address,address,uint256) nonpayable returns ()
-#define function approve(address,uint256) nonpayable returns () // these returns sb updated
 
-#define function balanceOf(address) view returns (uint256)
-#define function allowance(address,address) view returns (uint256)
-#define function totalSupply() view returns (uint256)
-
-#define event Transfer(address,address,uint256)
 #define event Approve(address,address,uint256)
+#define event Transfer(address,address,uint256)
 
 /* Events Signatures */
-#define constant TRANSFER_EVENT_SIGNATURE = 0xDDF252AD1BE2C89B69C2B068FC378DAA952BA7F163C4A11628F55A4DF523B3EF
+// todo: use __EVENT_HASH fn
 #define constant APPROVAL_EVENT_SIGNATURE = 0x8C5BE1E5EBEC7D5BD14F71427D1E84F3DD0314C0F7B2291E5B200AC8C7C3B925
+#define constant TRANSFER_EVENT_SIGNATURE = 0xDDF252AD1BE2C89B69C2B068FC378DAA952BA7F163C4A11628F55A4DF523B3EF
 
 /* Storage Slots */
 #define constant BALANCE_LOCATION = FREE_STORAGE_POINTER()
 #define constant TOTAL_SUPPLY_LOCATION = FREE_STORAGE_POINTER()
 #define constant NAME_LOCATION = FREE_STORAGE_POINTER()
-#define constant SYMBOL_LOCATION = FREE_STORAGE_POINTER()
+#define constant NONCE_LOCATION = FREE_STORAGE_POINTER()
+#define constant INITIAL_CHAIN_ID = FREE_STORAGE_POINTER()
+#define constant INITIAL_DOMAIN_SEPARATOR = FREE_STORAGE_POINTER()
 
 /* Constants */
 #define constant META_NAME = 0x05546f6b656e                                    // "Token" // ISSUE: string converter fn
 #define constant META_SYMBOL = 0x03544B4E                                      // "TKN"
 #define constant META_DECIMALS = 0x12                                          // 18
+#define constant PERMIT_TYPEHASH = 0x6e71edae12b1b97f4d1f60370fef10105fa2faae0126114a169c64845d6126c9 // keccak256("Permit(address owner,address spender,uint256 value,uint256 nonce,uint256 deadline)")
 #define constant UINT_256_MAX = 0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
-
+#define constant X_1901 = 0x1901000000000000000000000000000000000000000000000000000000000000
 
 /* Constructor */
 
-// TODO: GAS GOLF
-
 #define macro CONSTRUCTOR() = takes(0) returns (0) {
-    // Set msg.sender as the owner of the contract.
-    OWNABLE_CONSTRUCTOR()
-    // Name is first
-    0x20 0x40 codesize sub 0x00                                                // [mem_loc, codesize-size_of_name*2, size_of_name]
-    codecopy 0x00 mload                                                        // [name]
-    [NAME_LOCATION] sstore                                                     // []
-
-    0x20 0x20 codesize sub 0x00                                                // [mem_loc, codesize-size_of_symbol, size_of_symbol]
-    codecopy 0x00 mload                                                        // [symbol]
-    [SYMBOL_LOCATION] sstore                                                   // []
+    OWNABLE_CONSTRUCTOR()                                                       // []
+    chainid [INITIAL_CHAIN_ID] sstore                                           // []
+    COMPUTE_DOMAIN_SEPARATOR()                                                 // [DOMAIN SEPARATOR]
+    [INITIAL_DOMAIN_SEPARATOR] sstore                                          // []
 }
+
+#define macro COMPUTE_DOMAIN_SEPARATOR() = takes (0) returns (1) {
+    [PERMIT_TYPEHASH]                                                          // [DOMAIN_SEPARATOR_3
+    0x00 mstore                                                                // []
+    [META_NAME] 0x20 mstore                                                    // []
+    0x20 0x20 sha3                                                             // [name hash]
+    0x20 mstore                                                                // []
+    0x31                                                                       // ["1"] 0x31 is hex for ascii for 1
+    0x40 mstore                                                                // []
+    0x02 0x40 sha3                                                             // [hash of "1"]
+    0x20 0x40 mstore                                                           // []
+    chainid                                                                    // [chainid]
+    0x60 mstore                                                                // []
+    address                                                                    // [address(this)]
+    0x80 mstore                                                                // []
+    0xA0 0x00                                                                  // [loc, len]
+    sha3                                                                       // [hash]
+}
+
+#define macro _DOMAIN_SEPARATOR() = takes (0) returns (1) {
+    chainid                                                                    // [chainid]
+    [INITIAL_CHAIN_ID] sload                                                   // [INITIAL_CHAIN_ID, chainid]
+    eq                                                                         // [INITIAL_CHAIN_ID == chainid]
+    useInitial jumpi                                                           // []
+
+    COMPUTE_DOMAIN_SEPARATOR()                                                 // [computed domain separator]
+    done jump
+
+    useInitial:
+    [INITIAL_DOMAIN_SEPARATOR] sload                                           // [INITIAL_DOMAIN_SEPARATOR]
+
+    done:
+}
+
+
+#define macro DOMAIN_SEPARATOR() = takes (0) returns (0) {
+    _DOMAIN_SEPARATOR()
+    0x00 mstore                                 // [domain separator]
+    0x20 0x00 return                            // []
+}
+
+// (internal) takes an address off the stack, returns the current nonce for that address onto the stack.
+// but it also increments the nonce (before returning it)
+#define macro _NONCE_PLUS_PLUS() = takes (1) returns (1) {
+    // starting stack                                                          // [account]
+    dup1                                                                       // [account, account]
+    [NONCE_LOCATION] LOAD_ELEMENT_FROM_KEYS(0x00)                              // [currentNonce, account]
+    dup1                                                                       // [currentNonce, currentNonce, account]
+    0x01                                                                       // [1, currentNonce, currentNonce, account]
+    add                                                                        // [nextNonce, currentNonce, account]
+    dup3                                                                       // [account, nextNonce, currentNonce, account]
+    [NONCE_LOCATION] STORE_ELEMENT_FROM_KEYS(0x00)                             // [currentNonce, account]
+    swap1 // clean up stack                                                    // [account, currentNonce]
+    pop   // clean up stack                                                    // [currentNonce]
+}
+
+
+#define macro PERMIT() = takes (0) returns (0) {
+    // function permit(
+    //     address owner, //       0x04
+    //     address spender, //     0x24
+    //     uint256 value, //       0x44
+    //     uint256 deadline, //    0x64
+    //     uint8 v, //             0x84
+    //     bytes32 r, //           0xa4
+    //     bytes32 s)//            0xc4
+
+    // check deadline
+    0x64 calldataload                                                          // [deadline]
+    dup1                                                                       // [deadline, deadline]
+    timestamp                                                                  // [timestamp, deadline, deadline]
+    gt                                                                         // [timestamp > deadline, deadline]
+    expired jumpi                                                              // [deadline]
+
+    // calc inner kec
+    0x04 calldataload                                                          // [owner, deadline]
+    _NONCE_PLUS_PLUS()                                                         // [nonce, deadline]
+
+    0x44 calldataload                                                          // [value, nonce, deadline]
+    0x24 calldataload                                                          // [spender, value, nonce, deadline]
+    0x04 calldataload                                                          // [owner, spender, value, nonce, deadline]
+    [PERMIT_TYPEHASH]                                                          // [permit hash, owner, spender, value, nonce, deadline]
+    0x00 mstore                                                                // [owner, spender, value, nonce, deadline]
+    0x20 mstore                                                                // [spender, value, nonce, deadline]
+    0x40 mstore                                                                // [value, nonce, deadline]
+    0x60 mstore                                                                // [nonce, deadline]
+    0x80 mstore                                                                // [deadline]
+    0xa0 mstore                                                                // []
+    0xc0 0x00                                                                  // [loc, len]
+    sha3                                                                       // [inner hash]
+
+    // calc outer kec
+    _DOMAIN_SEPARATOR()                                                        // [DOMAIN_SEPARATOR, inner hash]
+    [X_1901]                                                                   // [0x1901, DOMAIN_SEPARATOR, inner hash]
+    0x00 mstore                                                                // [DOMAIN_SEPARATOR, inner hash]
+    0x02 mstore  // note: abi.encodePacked                                     // [inner hash]
+    0x22 mstore                                                                // []
+    0x42 0x00                                                                  // [loc, len]
+    sha3                                                                       // [outer hash]      __memory layout____________________
+
+    0x00 mstore                                                                // []                0x00 outer hash
+    0x84 calldataload                                                          // [v]
+    0x20 mstore                                                                // []                0x00 outerhash 0x20 v
+    0xa4 calldataload                                                          // [r]
+    0x40 mstore                                                                // []                0x00 outerhash 0x20 v 0x40 r
+    0xc4 calldataload                                                          // [s]
+    0x60 mstore                                                                // []                0x00 outerhash 0x20 v 0x40 r 0x60 s
+
+    // prepare stack for later
+    0x44 calldataload                                                          // [value]
+    0x24 calldataload                                                          // [spender, value]
+
+
+    // ecrecover
+    0x20                                                                       // [32, spender, value]
+    0x80                                                                       // [128, 32, spender, value]
+    0x80                                                                       // [128, 128, 32, spender, value]
+    0x00                                                                       // [0, 128, 128, 32, spender, value]
+    0x1                                                                        // [ecrecover precompile address, 0, 128, 128, 32, spender, value]
+    0xFFFFFFFF                                                                 // [gas, ecrecover precompile address, 0, 128, 128, 32, spender, value]
+    staticcall                                                                 // [success, spender, value]
+    pop // TODO: check for success                                             // [spender, value]
+    0x80 mload                                                                 // [recovered address, spender, value]
+
+    // check for recovered 0 address
+    dup1                                                                       // [recovered address, recovered address, spender, value]
+    0x00 eq                                                                    // [recovered address == 0, recovered address, spender, value]
+    invalidSigner jumpi                                                        // [recovered address, spender, value]
+
+    // // check for address is owner
+    dup1                                                                       // [recovered address, recovered address, spender, value]
+    0x04 calldataload                                                          // [owner, recovered address, recovered address, spender, value]
+    eq                                                                    // [owner == recovered address, recovered address, spender, value]
+    iszero                                                                     // [owner != recovered address, recovered address, spender, value]
+    invalidSigner jumpi                                                        // [recovered address, spender, value]
+
+    STORE_ELEMENT_FROM_KEYS(0x00)                                              // []
+
+    // TODO: emit event
+
+    0x00 0x00 return
+
+    expired:
+    0x69 0x00 mstore // todo change these all to 0x0 0x0 revert for now
+    0x20 0x00 revert
+
+    invalidSigner:
+    0x67 0x00 mstore
+    0x20 0x00 revert
+}
+
+#define macro NONCES() = takes (0) returns (0) {
+    0x04 calldataload                                                          // [account]
+    [NONCE_LOCATION] LOAD_ELEMENT_FROM_KEYS(0x00)                              // [nonce]
+    0x00 mstore                                                                // []
+    0x20 0x00 return                                                           // []
+}
+
 
 /* Metadata */
 
@@ -68,7 +228,6 @@
     [META_SYMBOL] 0x43 mstore
     0x60 0x20 return
 }
-
 
 #define macro DECIMALS() = takes (0) returns (0) {
     [META_DECIMALS] 0x00 mstore
@@ -143,7 +302,7 @@
     caller                                                                     // [from, to, value]
 
     STORE_ELEMENT_FROM_KEYS(0x00)
-    0x01 0x00 mstore // TODO: consider macro
+    0x01 0x00 mstore
     0x20 0x00 return
 }
 
@@ -275,44 +434,67 @@
 
     // Identify which function is being called.
     0x00 calldataload 0xE0 shr                                                 // [fn sig]
-    dup1 __FUNC_SIG(transfer)       eq transferJump     jumpi
-    dup1 __FUNC_SIG(transferFrom)   eq transferFromJump jumpi
-    dup1 __FUNC_SIG(mint)           eq mintJump         jumpi
-    dup1 __FUNC_SIG(balanceOf)      eq balanceOfJump    jumpi
-    dup1 __FUNC_SIG(burn)           eq burnJump         jumpi
-    dup1 __FUNC_SIG(balanceOf)      eq balanceOfJump    jumpi
-    dup1 __FUNC_SIG(totalSupply)    eq totalSupplyJump  jumpi
-    dup1 __FUNC_SIG(approve)        eq approveJump      jumpi
-    dup1 __FUNC_SIG(allowance)      eq allowanceJump    jumpi
-    dup1 __FUNC_SIG(name)           eq nameJump         jumpi
-    dup1 __FUNC_SIG(symbol)         eq symbolJump       jumpi
-    dup1 __FUNC_SIG(decimals)       eq decimalsJump     jumpi
+    dup1 __FUNC_SIG(transfer)           eq transferJump         jumpi
+    dup1 __FUNC_SIG(transferFrom)       eq transferFromJump     jumpi
+    dup1 __FUNC_SIG(mint)               eq mintJump             jumpi
+    dup1 __FUNC_SIG(balanceOf)          eq balanceOfJump        jumpi
+    dup1 __FUNC_SIG(burn)               eq burnJump             jumpi
+    dup1 __FUNC_SIG(balanceOf)          eq balanceOfJump        jumpi
+    dup1 __FUNC_SIG(totalSupply)        eq totalSupplyJump      jumpi
+    dup1 __FUNC_SIG(approve)            eq approveJump          jumpi
+    dup1 __FUNC_SIG(allowance)          eq allowanceJump        jumpi
+    dup1 __FUNC_SIG(permit)             eq permitJump           jumpi
+    dup1 __FUNC_SIG(nonces)             eq noncesJump           jumpi
+    dup1 __FUNC_SIG(name)               eq nameJump             jumpi
+    dup1 __FUNC_SIG(symbol)             eq symbolJump           jumpi
+    dup1 __FUNC_SIG(decimals)           eq decimalsJump         jumpi
+    dup1 __FUNC_SIG(DOMAIN_SEPARATOR)   eq domainSeparatorJump  jumpi
 
     // ADD EXTERNAL MAIN'S
 
     0x00 0x00 revert
 
-    nameJump:
-        NAME()
-    symbolJump:
-        SYMBOL()
-    decimalsJump:
-        DECIMALS()
-    transferJump:
-        TRANSFER()
-    transferFromJump:
-        TRANSFER_FROM()
-    mintJump:
-        MINT()
-    burnJump:
-        BURN()
-    balanceOfJump:
-        BALANCE_OF()
-    totalSupplyJump:
-        TOTAL_SUPPLY()
-    approveJump:
-        APPROVE()
     allowanceJump:
-        ALLOWANCE()
+    ALLOWANCE()
+
+    approveJump:
+    APPROVE()
+
+    balanceOfJump:
+    BALANCE_OF()
+
+    burnJump:
+    BURN()
+
+    decimalsJump:
+    DECIMALS()
+
+    domainSeparatorJump:
+    DOMAIN_SEPARATOR()
+
+    mintJump:
+    MINT()
+
+    nameJump:
+    NAME()
+
+    noncesJump:
+    NONCES()
+
+    permitJump:
+    PERMIT()
+
+    symbolJump:
+    SYMBOL()
+
+    totalSupplyJump:
+    TOTAL_SUPPLY()
+
+    transferFromJump:
+    TRANSFER_FROM()
+
+    transferJump:
+    TRANSFER()
+
 
 }
