@@ -96,8 +96,8 @@
     0x20 0x00 return                                                           // []
 }
 
-// (internal) takes an address off the stack, returns the current nonce for that address onto the stack.
-// but it also increments the nonce (before returning it)
+// Takes an address off the stack, returns the current nonce for that address onto the stack.
+// Increments the nonce for next time,
 #define macro _NONCE_PLUS_PLUS() = takes (1) returns (1) {
     // starting stack                                                          // [account]
     dup1                                                                       // [account, account]
