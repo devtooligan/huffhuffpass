@@ -3,12 +3,12 @@
 /// @notice Adapted from Solmate
 /// https://github.com/transmissions11/solmate/blob/main/src/tokens/ERC20.sol
 
-
-/* Imports */
 #include "./utils/Ownable.huff"
 #include "./utils/HashMap.huff"
 
-/* Interface */
+/*//////////////////////////////////////////////////////////////
+                            INTERFACE
+//////////////////////////////////////////////////////////////*/
 #define function allowance(address,address) view returns (uint256)
 #define function approve(address,uint256) nonpayable returns () // these returns sb updated
 #define function balanceOf(address) view returns (uint256)
@@ -24,31 +24,54 @@
 #define function transfer(address,uint256) nonpayable returns ()
 #define function transferFrom(address,address,uint256) nonpayable returns ()
 
+/*//////////////////////////////////////////////////////////////
+                                EVENTS
+//////////////////////////////////////////////////////////////*/
+
 #define event Approve(address,address,uint256)
 #define event Transfer(address,address,uint256)
 
-/* Events Signatures */
 // todo: use __EVENT_HASH fn
 #define constant APPROVAL_EVENT_SIGNATURE = 0x8C5BE1E5EBEC7D5BD14F71427D1E84F3DD0314C0F7B2291E5B200AC8C7C3B925
 #define constant TRANSFER_EVENT_SIGNATURE = 0xDDF252AD1BE2C89B69C2B068FC378DAA952BA7F163C4A11628F55A4DF523B3EF
 
-/* Storage Slots */
-#define constant APPROVAL_SLOT = FREE_STORAGE_POINTER()
-#define constant BALANCE_SLOT = FREE_STORAGE_POINTER()
-#define constant INITIAL_CHAIN_ID = FREE_STORAGE_POINTER()
-#define constant INITIAL_DOMAIN_SEPARATOR = FREE_STORAGE_POINTER()
-#define constant NONCE_SLOT = FREE_STORAGE_POINTER()
-#define constant TOTAL_SUPPLY_SLOT = FREE_STORAGE_POINTER()
+/*//////////////////////////////////////////////////////////////
+                              METADATA CONSTANTS
+//////////////////////////////////////////////////////////////*/
 
-/* Constants */
 #define constant META_NAME = 0x05546f6b656e // "Token" // ISSUE: string converter fn
 #define constant META_SYMBOL = 0x03544B4E // "TKN"
 #define constant META_DECIMALS = 0x12 // 18
-#define constant PERMIT_TYPEHASH = 0x6e71edae12b1b97f4d1f60370fef10105fa2faae0126114a169c64845d6126c9 // keccak256("Permit(address owner,address spender,uint256 value,uint256 nonce,uint256 deadline)")
+
+/*//////////////////////////////////////////////////////////////
+                            ERC20 STORAGE SLOTS
+//////////////////////////////////////////////////////////////*/
+
+#define constant ALLOWANCE_SLOT = FREE_STORAGE_POINTER()
+#define constant BALANCEOF_SLOT = FREE_STORAGE_POINTER()
+#define constant TOTAL_SUPPLY_SLOT = FREE_STORAGE_POINTER()
+
+/*//////////////////////////////////////////////////////////////
+                            EIP-2612 CONSTANTS
+//////////////////////////////////////////////////////////////*/
+
+// keccak256("Permit(address owner,address spender,uint256 value,uint256 nonce,uint256 deadline)")
+#define constant INITIAL_CHAIN_ID = FREE_STORAGE_POINTER()
+#define constant INITIAL_DOMAIN_SEPARATOR = FREE_STORAGE_POINTER()
+#define constant NONCE_SLOT = FREE_STORAGE_POINTER()
+#define constant PERMIT_TYPEHASH = 0x6e71edae12b1b97f4d1f60370fef10105fa2faae0126114a169c64845d6126c9
+
+/*//////////////////////////////////////////////////////////////
+                            UTILITY CONSTANTS
+//////////////////////////////////////////////////////////////*/
+
 #define constant UINT_256_MAX = 0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
 #define constant X_1901 = 0x1901000000000000000000000000000000000000000000000000000000000000
 
-/* Constructor */
+/*//////////////////////////////////////////////////////////////
+                            CONSTRUCTOR
+//////////////////////////////////////////////////////////////*/
+
 #define macro CONSTRUCTOR() = takes(0) returns (0) {
     OWNABLE_CONSTRUCTOR()                                                      // []
     chainid [INITIAL_CHAIN_ID] sstore                                          // []
@@ -56,62 +79,140 @@
     [INITIAL_DOMAIN_SEPARATOR] sstore                                          // []
 }
 
-/* EIP-2612 */
-#define macro COMPUTE_DOMAIN_SEPARATOR() = takes (0) returns (1) {
-    [PERMIT_TYPEHASH]                                                          // [DOMAIN_SEPARATOR_3
-    0x00 mstore                                                                // []
-    [META_NAME] 0x20 mstore                                                    // []
-    0x20 0x20 sha3                                                             // [name hash]
-    0x20 mstore                                                                // []
-    0x31                                                                       // ["1"] 0x31 is hex for ascii for 1
-    0x40 mstore                                                                // []
-    0x02 0x40 sha3                                                             // [hash of "1"]
-    0x20 0x40 mstore                                                           // []
-    chainid                                                                    // [chainid]
-    0x60 mstore                                                                // []
-    address                                                                    // [address(this)]
-    0x80 mstore                                                                // []
-    0xA0 0x00                                                                  // [loc, len]
-    sha3                                                                       // [hash]
+/*//////////////////////////////////////////////////////////////
+                            ERC20 LOGIC
+//////////////////////////////////////////////////////////////*/
+
+#define macro APPROVE() = takes (0) returns (0) {
+    0x24 calldataload                                                          // [value]
+    0x04 calldataload                                                          // [to, value]
+    caller                                                                     // [from, to, value]
+    [ALLOWANCE_SLOT]                                                            // [slot, from, to, value]
+    STORE_ELEMENT_FROM_SLOT_AND_KEYS(0x00)                                     // []
+    0x01 0x00 mstore
+    0x20 0x00 return
 }
 
-#define macro _DOMAIN_SEPARATOR() = takes (0) returns (1) {
-    chainid                                                                    // [chainid]
-    [INITIAL_CHAIN_ID] sload                                                   // [INITIAL_CHAIN_ID, chainid]
-    eq                                                                         // [INITIAL_CHAIN_ID == chainid]
-    useInitial jumpi                                                           // []
-    COMPUTE_DOMAIN_SEPARATOR()                                                 // [computed domain separator]
-    done jump
+/* Transfer Functions */
+#define macro TRANSFER() = takes(0) returns(1) {
+    // Setup the stack for the transfer function.
+    0x04 calldataload                                                          // [to]
+    caller                                                                     // [from, to]
+    0x24 calldataload                                                          // [value, from, to]
 
-    useInitial:
-    [INITIAL_DOMAIN_SEPARATOR] sload                                           // [INITIAL_DOMAIN_SEPARATOR]
+    // Update the balances of the sender and recipient.
+    _TRANSFER_TAKE_FROM()                                                       // [value, from, to]
+    _TRANSFER_GIVE_TO()                                                         // [value, from, to]
 
-    done:
+    // Emit the transfer event. // TODO consider macro
+    0x00 mstore                                                                // [from, to]
+    [TRANSFER_EVENT_SIGNATURE]                                                 // [sig, from, to]
+    0x20 0x00                                                                  // [0, 32, sig, from, to]
+    log3                                                                       // []
+
+    // Return "1" to represent a succesful transfer.
+    0x01 0x00 mstore
+    0x20 0x00 return
 }
 
+#define macro TRANSFER_FROM() = takes(0) returns(1) { // TODO: is self?
+    // Setup the stack for the transfer function.
+    0x24 calldataload                                                          // [to]
+    0x04 calldataload                                                          // [from, to]
+    caller                                                                     // [msg.sender, from, to]
+    dup2                                                                       // [from, msg.sender, from, to]
+    [ALLOWANCE_SLOT]                                                            // [slot, from, msg.sender, from, to]
+    // check for max approval
+    LOAD_ELEMENT_FROM_SLOT_AND_KEYS(0x00)                                      // [approved, from, to]
+    dup1                                                                       // [approved, approved, from, to]
+    0x44 calldataload                                                          // [value, approved, approved, from, to]
 
-#define macro DOMAIN_SEPARATOR() = takes (0) returns (0) {
-    _DOMAIN_SEPARATOR()
-    0x00 mstore                                                                // [domain separator]
-    0x20 0x00 return                                                           // []
+    // check isOwner
+    dup4                                                                       // [from, value, approved, approved, from, to]
+    caller                                                                     // [msg.sender, from, value, approved, approved, from, to]
+    eq                                                                         // [msg.sender == from, value, approved, approved, from, to]
+    approved1 jumpi                                                            // [value, approved, approved, from, to]
+
+    // check max approval
+    dup2                                                                       // [approved, value, approved, approved, from, to]
+    [UINT_256_MAX]                                                             // [type(uint).max, approved, value, approved, approved, from, to]
+    eq                                                                         // [type(uint).max == approved, value, approved, approved, from, to]
+    approved1 jumpi                                                            // [value, approved, approved, from, to]
+
+    // check has approval
+    gt                                                                         // [value > approved, approved, from, to]
+    insufficientApproval jumpi                                                 // [approved, from, to]
+
+    // adjust approval
+    0x44 calldataload                                                          // [value, approved, from, to]
+    swap1                                                                      // [approved, value, from, to]
+    sub                                                                        // [approved - value => newApprovalValue, from, to]
+    caller                                                                     // [msg.sender, newApprovalValue, from, to]
+    dup3                                                                       // [from, msg.sender, newApprovalValue, from, to]
+    [ALLOWANCE_SLOT]                                                            // [slot, from, msg.sender, newApprovalValue, from, to]
+    STORE_ELEMENT_FROM_SLOT_AND_KEYS(0x00)                                     // [from, to]
+    approved2 jump                                                             // [from, to]
+
+    approved1:                                                                 // [value, approved, approved, from, to]
+    pop pop pop                                                                // [from, to]
+
+    approved2:                                                                 // [from, to]
+    0x44 calldataload                                                          // [value, from, to]
+
+    // Update the balances of the sender and recipient.
+    _TRANSFER_TAKE_FROM()                                                       // [value, from, to]
+    _TRANSFER_GIVE_TO()                                                         // [value, from, to]
+
+    // Emit the transfer event. // TODO consider macro
+    0x00 mstore                                                                // [from, to]
+    [TRANSFER_EVENT_SIGNATURE]                                                 // [sig, from, to]
+    0x20 0x00                                                                  // [0, 32, sig, from, to]
+    log3                                                                       // []
+
+    // Return "1" to represent a succesful transfer.
+    0x01 0x00 mstore
+    0x20 0x00 return
+
+    insufficientApproval:
+        0x00 0x00 revert
 }
 
-// Takes an address off the stack, returns the current nonce for that address onto the stack.
-// Increments the nonce for next time,
-#define macro _NONCE_PLUS_PLUS() = takes (1) returns (1) {
-    // starting stack                                                          // [account]
-    dup1                                                                       // [account, account]
-    [NONCE_SLOT] LOAD_ELEMENT_FROM_KEYS(0x00)                              // [currentNonce, account]
-    dup1                                                                       // [currentNonce, currentNonce, account]
-    0x01                                                                       // [1, currentNonce, currentNonce, account]
-    add                                                                        // [nextNonce, currentNonce, account]
-    dup3                                                                       // [account, nextNonce, currentNonce, account]
-    [NONCE_SLOT] STORE_ELEMENT_FROM_KEYS(0x00)                             // [currentNonce, account]
-    swap1 // clean up stack                                                    // [account, currentNonce]
-    pop   // clean up stack                                                    // [currentNonce]
+#define macro _TRANSFER_TAKE_FROM() = takes(3) returns (3) {
+    // input stack: [value, from, to]
+    dup2 [BALANCEOF_SLOT] LOAD_ELEMENT_FROM_KEYS(0x00)                       // [balance, value, from, to]                                                // [from, value, from, to]
+    dup1                                                                       // [balance, balance, value, from, to]
+    dup3                                                                       // [value, balance, balance, value, from, to]
+    gt                                                                         // [value>balance, balance, value, from, to]
+    iszero                                                                     // [value<=balance, balance, value, from, to]
+    valid jumpi                                                                // [balance, value, from, to]
+
+    // insufficient balance
+    0x00 0x00 revert
+
+    // Update the sender's balance.
+    valid:
+    dup2                                                                       // [value, balance, value, from, to]
+    swap1                                                                      // [balance, value, value, from, to]
+    sub                                                                        // [balance - value, value, from, to]
+    dup3                                                                       // [from, balance-value, value, from, to]
+    [BALANCEOF_SLOT] STORE_ELEMENT_FROM_KEYS(0x00)                           // [value, from, to]
 }
 
+// TODO: OVERFLOW CHECK?
+#define macro _TRANSFER_GIVE_TO() = takes(3) returns (0) {
+    // input stack: [value, from, to]
+    dup3                                                                       // [to, value, from, to]
+    dup2                                                                       // [value, to, value, from, to]
+    swap1                                                                      // [to, value, value, from, to]
+    [BALANCEOF_SLOT] LOAD_ELEMENT_FROM_KEYS(0x00)                            // [balance, value, value, from, to]
+    add                                                                        // [balance+value, value, from, to]
+    dup4                                                                       // [to, balance+value, value, from, to]
+    [BALANCEOF_SLOT] STORE_ELEMENT_FROM_KEYS(0x00)                           // [value, from, to]
+}
 
+/*//////////////////////////////////////////////////////////////
+                            EIP-2612 LOGIC
+//////////////////////////////////////////////////////////////*/
 #define macro PERMIT() = takes (0) returns (0) {
     // permit() fn sig for reference:
     //     address owner, //       0x04
@@ -200,6 +301,25 @@
     0x00 0x00 revert
 }
 
+/* EIP-2612 */
+#define macro COMPUTE_DOMAIN_SEPARATOR() = takes (0) returns (1) {
+    [PERMIT_TYPEHASH]                                                          // [DOMAIN_SEPARATOR_3
+    0x00 mstore                                                                // []
+    [META_NAME] 0x20 mstore                                                    // []
+    0x20 0x20 sha3                                                             // [name hash]
+    0x20 mstore                                                                // []
+    0x31                                                                       // ["1"] 0x31 is hex for ascii for 1
+    0x40 mstore                                                                // []
+    0x02 0x40 sha3                                                             // [hash of "1"]
+    0x20 0x40 mstore                                                           // []
+    chainid                                                                    // [chainid]
+    0x60 mstore                                                                // []
+    address                                                                    // [address(this)]
+    0x80 mstore                                                                // []
+    0xA0 0x00                                                                  // [loc, len]
+    sha3                                                                       // [hash]
+}
+
 #define macro NONCES() = takes (0) returns (0) {
     0x04 calldataload                                                          // [account]
     [NONCE_SLOT] LOAD_ELEMENT_FROM_KEYS(0x00)                              // [nonce]
@@ -207,177 +327,30 @@
     0x20 0x00 return                                                           // []
 }
 
-/* Metadata */
-#define macro NAME() = takes (0) returns (0) {
-    0x20 0x20 mstore
-    [META_NAME] 0x45 mstore
-    0x60 0x20 return
-}
-
-#define macro SYMBOL() = takes (0) returns (0) {
-    0x20 0x20 mstore
-    [META_SYMBOL] 0x43 mstore
-    0x60 0x20 return
-}
-
-#define macro DECIMALS() = takes (0) returns (0) {
-    [META_DECIMALS] 0x00 mstore
-    0x20 0x00 return
-}
-
-/* Accounting Functions */
-#define macro BALANCE_OF() = takes (0) returns (0) {
-    0x04 calldataload                                                          // [account]
-    [BALANCE_SLOT] LOAD_ELEMENT_FROM_KEYS(0x00)                                // [balance]
-    0x00 mstore                                                                // []
+#define macro DOMAIN_SEPARATOR() = takes (0) returns (0) {
+    _DOMAIN_SEPARATOR()
+    0x00 mstore                                                                // [domain separator]
     0x20 0x00 return                                                           // []
 }
 
-#define macro TOTAL_SUPPLY() = takes (0) returns (0) {
-    [TOTAL_SUPPLY_SLOT] sload                                                  // [supply]
-    0x00 mstore                                                                // []
-    0x20 0x00 return                                                           // []
+#define macro _DOMAIN_SEPARATOR() = takes (0) returns (1) {
+    chainid                                                                    // [chainid]
+    [INITIAL_CHAIN_ID] sload                                                   // [INITIAL_CHAIN_ID, chainid]
+    eq                                                                         // [INITIAL_CHAIN_ID == chainid]
+    useInitial jumpi                                                           // []
+    COMPUTE_DOMAIN_SEPARATOR()                                                 // [computed domain separator]
+    done jump
+
+    useInitial:
+    [INITIAL_DOMAIN_SEPARATOR] sload                                           // [INITIAL_DOMAIN_SEPARATOR]
+
+    done:
 }
 
-/* Approval Functions */
-#define macro ALLOWANCE() = takes (0) returns (0) {
-    0x24 calldataload                                                          // [to]
-    0x04 calldataload                                                          // [from, to]
-    [APPROVAL_SLOT]                                                            // [slot, from, to]
-    LOAD_ELEMENT_FROM_SLOT_AND_KEYS(0x00)                                      // [allowance]
-    0x00 mstore                                                                // []
-    0x20 0x00 return
-}
+/*//////////////////////////////////////////////////////////////
+                    MINT/BURN LOGIC
+//////////////////////////////////////////////////////////////*/
 
-#define macro APPROVE() = takes (0) returns (0) {
-    0x24 calldataload                                                          // [value]
-    0x04 calldataload                                                          // [to, value]
-    caller                                                                     // [from, to, value]
-    [APPROVAL_SLOT]                                                            // [slot, from, to, value]
-    STORE_ELEMENT_FROM_SLOT_AND_KEYS(0x00)                                     // []
-    0x01 0x00 mstore
-    0x20 0x00 return
-}
-
-/* Transfer Functions */
-#define macro TRANSFER() = takes(0) returns(1) {
-    // Setup the stack for the transfer function.
-    0x04 calldataload                                                          // [to]
-    caller                                                                     // [from, to]
-    0x24 calldataload                                                          // [value, from, to]
-
-    // Update the balances of the sender and recipient.
-    _TRANSFER_TAKE_FROM()                                                       // [value, from, to]
-    _TRANSFER_GIVE_TO()                                                         // [value, from, to]
-
-    // Emit the transfer event. // TODO consider macro
-    0x00 mstore                                                                // [from, to]
-    [TRANSFER_EVENT_SIGNATURE]                                                 // [sig, from, to]
-    0x20 0x00                                                                  // [0, 32, sig, from, to]
-    log3                                                                       // []
-
-    // Return "1" to represent a succesful transfer.
-    0x01 0x00 mstore
-    0x20 0x00 return
-}
-
-#define macro TRANSFER_FROM() = takes(0) returns(1) { // TODO: is self?
-    // Setup the stack for the transfer function.
-    0x24 calldataload                                                          // [to]
-    0x04 calldataload                                                          // [from, to]
-    caller                                                                     // [msg.sender, from, to]
-    dup2                                                                       // [from, msg.sender, from, to]
-    [APPROVAL_SLOT]                                                            // [slot, from, msg.sender, from, to]
-    // check for max approval
-    LOAD_ELEMENT_FROM_SLOT_AND_KEYS(0x00)                                      // [approved, from, to]
-    dup1                                                                       // [approved, approved, from, to]
-    0x44 calldataload                                                          // [value, approved, approved, from, to]
-
-    // check isOwner
-    dup4                                                                       // [from, value, approved, approved, from, to]
-    caller                                                                     // [msg.sender, from, value, approved, approved, from, to]
-    eq                                                                         // [msg.sender == from, value, approved, approved, from, to]
-    approved1 jumpi                                                            // [value, approved, approved, from, to]
-
-    // check max approval
-    dup2                                                                       // [approved, value, approved, approved, from, to]
-    [UINT_256_MAX]                                                             // [type(uint).max, approved, value, approved, approved, from, to]
-    eq                                                                         // [type(uint).max == approved, value, approved, approved, from, to]
-    approved1 jumpi                                                            // [value, approved, approved, from, to]
-
-    // check has approval
-    gt                                                                         // [value > approved, approved, from, to]
-    insufficientApproval jumpi                                                 // [approved, from, to]
-
-    // adjust approval
-    0x44 calldataload                                                          // [value, approved, from, to]
-    swap1                                                                      // [approved, value, from, to]
-    sub                                                                        // [approved - value => newApprovalValue, from, to]
-    caller                                                                     // [msg.sender, newApprovalValue, from, to]
-    dup3                                                                       // [from, msg.sender, newApprovalValue, from, to]
-    [APPROVAL_SLOT]                                                            // [slot, from, msg.sender, newApprovalValue, from, to]
-    STORE_ELEMENT_FROM_SLOT_AND_KEYS(0x00)                                     // [from, to]
-    approved2 jump                                                             // [from, to]
-
-    approved1:                                                                 // [value, approved, approved, from, to]
-    pop pop pop                                                                // [from, to]
-
-    approved2:                                                                 // [from, to]
-    0x44 calldataload                                                          // [value, from, to]
-
-    // Update the balances of the sender and recipient.
-    _TRANSFER_TAKE_FROM()                                                       // [value, from, to]
-    _TRANSFER_GIVE_TO()                                                         // [value, from, to]
-
-    // Emit the transfer event. // TODO consider macro
-    0x00 mstore                                                                // [from, to]
-    [TRANSFER_EVENT_SIGNATURE]                                                 // [sig, from, to]
-    0x20 0x00                                                                  // [0, 32, sig, from, to]
-    log3                                                                       // []
-
-    // Return "1" to represent a succesful transfer.
-    0x01 0x00 mstore
-    0x20 0x00 return
-
-    insufficientApproval:
-        0x00 0x00 revert
-}
-
-#define macro _TRANSFER_TAKE_FROM() = takes(3) returns (3) {
-    // input stack: [value, from, to]
-    dup2 [BALANCE_SLOT] LOAD_ELEMENT_FROM_KEYS(0x00)                       // [balance, value, from, to]                                                // [from, value, from, to]
-    dup1                                                                       // [balance, balance, value, from, to]
-    dup3                                                                       // [value, balance, balance, value, from, to]
-    gt                                                                         // [value>balance, balance, value, from, to]
-    iszero                                                                     // [value<=balance, balance, value, from, to]
-    valid jumpi                                                                // [balance, value, from, to]
-
-    // insufficient balance
-    0x00 0x00 revert
-
-    // Update the sender's balance.
-    valid:
-    dup2                                                                       // [value, balance, value, from, to]
-    swap1                                                                      // [balance, value, value, from, to]
-    sub                                                                        // [balance - value, value, from, to]
-    dup3                                                                       // [from, balance-value, value, from, to]
-    [BALANCE_SLOT] STORE_ELEMENT_FROM_KEYS(0x00)                           // [value, from, to]
-}
-
-// TODO: OVERFLOW CHECK?
-#define macro _TRANSFER_GIVE_TO() = takes(3) returns (0) {
-    // input stack: [value, from, to]
-    dup3                                                                       // [to, value, from, to]
-    dup2                                                                       // [value, to, value, from, to]
-    swap1                                                                      // [to, value, value, from, to]
-    [BALANCE_SLOT] LOAD_ELEMENT_FROM_KEYS(0x00)                            // [balance, value, value, from, to]
-    add                                                                        // [balance+value, value, from, to]
-    dup4                                                                       // [to, balance+value, value, from, to]
-    [BALANCE_SLOT] STORE_ELEMENT_FROM_KEYS(0x00)                           // [value, from, to]
-}
-
-
-/* Permissioned Functions */
 #define macro BURN() = takes(0) returns (0) {
     // Setup the stack for the burn function.
     0x00                                                                       // [to (0x00)]
@@ -398,10 +371,8 @@
     0x00 0x00 return
 }
 
-
 #define macro MINT() = takes(0) returns (0) {
-    // Ensure that the sender is the owner of the contract.
-    // ONLY_OWNER()
+    // TODO: ONLY_OWNER()
 
     // Setup the stack for the mint function.
     0x04 calldataload                                                          // [to]
@@ -427,7 +398,10 @@
     0x00 0x00 return
 }
 
-/* Utility Functions */
+/*//////////////////////////////////////////////////////////////
+                      UTILITY FUNCTIONS
+//////////////////////////////////////////////////////////////*/
+
 #define macro NON_PAYABLE() = takes(0) returns (0) {
     callvalue iszero                                                           // [msg.value == 0]
     novalue jumpi                                                              // []
@@ -437,7 +411,68 @@
     novalue:
 }
 
-// Main Macro
+// nonce++ Takes an address off the stack, returns the current nonce for that address onto the stack.
+// Increments the nonce for next time
+#define macro _NONCE_PLUS_PLUS() = takes (1) returns (1) {
+    // starting stack                                                          // [account]
+    dup1                                                                       // [account, account]
+    [NONCE_SLOT] LOAD_ELEMENT_FROM_KEYS(0x00)                              // [currentNonce, account]
+    dup1                                                                       // [currentNonce, currentNonce, account]
+    0x01                                                                       // [1, currentNonce, currentNonce, account]
+    add                                                                        // [nextNonce, currentNonce, account]
+    dup3                                                                       // [account, nextNonce, currentNonce, account]
+    [NONCE_SLOT] STORE_ELEMENT_FROM_KEYS(0x00)                             // [currentNonce, account]
+    swap1 // clean up stack                                                    // [account, currentNonce]
+    pop   // clean up stack                                                    // [currentNonce]
+}
+
+/*//////////////////////////////////////////////////////////////
+                      VIEW FUNCTIONS
+//////////////////////////////////////////////////////////////*/
+
+#define macro NAME() = takes (0) returns (0) {
+    0x20 0x20 mstore
+    [META_NAME] 0x45 mstore
+    0x60 0x20 return
+}
+
+#define macro SYMBOL() = takes (0) returns (0) {
+    0x20 0x20 mstore
+    [META_SYMBOL] 0x43 mstore
+    0x60 0x20 return
+}
+
+#define macro DECIMALS() = takes (0) returns (0) {
+    [META_DECIMALS] 0x00 mstore
+    0x20 0x00 return
+}
+
+#define macro BALANCE_OF() = takes (0) returns (0) {
+    0x04 calldataload                                                          // [account]
+    [BALANCEOF_SLOT] LOAD_ELEMENT_FROM_KEYS(0x00)                                // [balance]
+    0x00 mstore                                                                // []
+    0x20 0x00 return                                                           // []
+}
+
+#define macro TOTAL_SUPPLY() = takes (0) returns (0) {
+    [TOTAL_SUPPLY_SLOT] sload                                                  // [supply]
+    0x00 mstore                                                                // []
+    0x20 0x00 return                                                           // []
+}
+
+#define macro ALLOWANCE() = takes (0) returns (0) {
+    0x24 calldataload                                                          // [to]
+    0x04 calldataload                                                          // [from, to]
+    [ALLOWANCE_SLOT]                                                            // [slot, from, to]
+    LOAD_ELEMENT_FROM_SLOT_AND_KEYS(0x00)                                      // [allowance]
+    0x00 mstore                                                                // []
+    0x20 0x00 return
+}
+
+/*//////////////////////////////////////////////////////////////
+                            MAIN
+//////////////////////////////////////////////////////////////*/
+
 #define macro MAIN() = takes(0) returns (0) {
     NON_PAYABLE()
 
