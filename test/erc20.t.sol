@@ -62,7 +62,7 @@ contract ERC20Test is Test {
         assertEq(token.balanceOf(address(0xBEEF)), 1e18);
     }
 
-    function testTransferFrom() public {
+    function testTransferFrom1() public {
         address from = address(0xABCD);
 
         token.mint(from, 1e18);
