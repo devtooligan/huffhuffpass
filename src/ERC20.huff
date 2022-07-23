@@ -427,8 +427,19 @@
     0x00 0x00 return
 }
 
+/* Utility Functions */
+#define macro NON_PAYABLE() = takes(0) returns (0) {
+    callvalue iszero                                                           // [msg.value == 0]
+    novalue jumpi                                                              // []
+
+    // TODO: Add revert string
+    0x00 0x00 revert
+    novalue:
+}
+
 // Main Macro
 #define macro MAIN() = takes(0) returns (0) {
+    NON_PAYABLE()
 
     // Identify which function is being called.
     0x00 calldataload 0xE0 shr                                                 // [fn sig]
