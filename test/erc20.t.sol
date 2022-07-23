@@ -31,6 +31,35 @@ contract ERC20Test is Test {
         assertEq(token.decimals(), 18);
     }
 
+    function testNonPayable() public {
+        vm.deal(address(this), 10 ether);
+
+        // mint
+        (bool success,) = address(token).call{value: 1 ether}(abi.encodeWithSelector(token.mint.selector, address(0xBEEF), 1e18));
+        assertFalse(success);
+        // burn
+        (success,) = address(token).call{value: 1 ether}(abi.encodeWithSelector(token.burn.selector, address(0xBEEF), 1e18));
+        assertFalse(success);
+        // approve
+        (success,) = address(token).call{value: 1 ether}(abi.encodeWithSelector(token.approve.selector, address(0xBEEF), 1e18));
+        assertFalse(success);
+        // transfer
+        (success,) = address(token).call{value: 1 ether}(abi.encodeWithSelector(token.transfer.selector, address(0xBEEF), 1e18));
+        // transferFrom
+        (success,) = address(token).call{value: 1 ether}(abi.encodeWithSelector(token.transferFrom.selector, address(this), address(0xBEEF), 1e18));
+        assertFalse(success);
+        // name
+        (success,) = address(token).call{value: 1 ether}(abi.encodeWithSelector(token.name.selector, address(0xBEEF), 1e18));
+        assertFalse(success);
+        // balanceOf
+        (success,) = address(token).call{value: 1 ether}(abi.encodeWithSelector(token.balanceOf.selector, address(0xBEEF)));
+        assertFalse(success);
+        // no data
+        (success,) = address(token).call{value: 1 ether}(abi.encode(0x0));
+        assertFalse(success);
+
+    }
+
     function testMint() public {
         token.mint(address(0xBEEF), 1e18);
 
