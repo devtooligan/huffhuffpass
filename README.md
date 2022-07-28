@@ -7,6 +7,6 @@
 
 TODO:
 
- - [ ] add missing events and revert strings (Solmate doesn't test for these!)
+ - [x] add missing events and revert strings (Solmate doesn't test for these!)
  - [ ] refactor / gas golf -- TransferFrom especially needs some tlc
  - [ ] idk why CI tests failing, everything passes locally even w fuzz runs cranked to 50k
