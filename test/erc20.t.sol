@@ -34,11 +34,8 @@ contract ERC20Test is Test {
         token = IERC20(HuffDeployer.deploy("erc20"));
     }
 
-    function testMetadata() public {
-        assertEq(token.name(), "Token");
-        assertEq(token.symbol(), "TKN");
-        assertEq(token.decimals(), 18);
-    }
+
+    // SOLMATE ERC20 and OWNABLE tests below.  These are additional tests.
 
     function testNonPayable() public {
         vm.deal(address(this), 10 ether);
@@ -67,6 +64,17 @@ contract ERC20Test is Test {
         (success,) = address(token).call{value: 1 ether}(abi.encode(0x0));
         assertFalse(success);
 
+    }
+
+    // SOLMATE TESTS - These have been modified as follows:
+    //   1. Invariant tests changed to fuzzing.  (DappTools not supported here)
+    //   2. Additional coverage added to test every event
+    //   3. Additional coverage added to test all uses of require()
+
+    function testMetadata() public {
+        assertEq(token.name(), "Token");
+        assertEq(token.symbol(), "TKN");
+        assertEq(token.decimals(), 18);
     }
 
     function testMint() public {

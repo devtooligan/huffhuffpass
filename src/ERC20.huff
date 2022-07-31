@@ -5,7 +5,7 @@
 
 
 /* Imports */
-#include "./utils/Ownable.huff"
+#include "./utils/TSOwnable.huff"
 #include "./utils/HashMap.huff"
 
 /* Interface */
@@ -51,7 +51,7 @@
 
 /* Constructor */
 #define macro CONSTRUCTOR() = takes(0) returns (0) {
-    OWNABLE_CONSTRUCTOR()                                                      // []
+    CONSTRUCTOR_TSOWNABLE()                                                      // []
     chainid [INITIAL_CHAIN_ID] sstore                                          // []
     COMPUTE_DOMAIN_SEPARATOR()                                                 // [DOMAIN SEPARATOR]
     [INITIAL_DOMAIN_SEPARATOR] sstore                                          // []
@@ -493,7 +493,7 @@
     dup1 __FUNC_SIG(decimals)           eq decimalsJump         jumpi
     dup1 __FUNC_SIG(DOMAIN_SEPARATOR)   eq domainSeparatorJump  jumpi
 
-    // TODO: ADD EXTERNAL MAIN'S, OWNABLE
+    MAIN_TSOWNABLE()
 
     0x00 0x00 revert
 
