@@ -11,7 +11,16 @@ import {IERC20} from "../src/interfaces/IERC20.sol";
 ///  - Use forge-std/Test.sol instead of DS-Test+
 ///  - Instantiate the Huff contract within the tests as opposed to the abstract contract pattern used by Solmate
 ///  - Using Foundry exclusively so DappTools invariant tests have been removed
+///  - Discontinue use of testFail pattern in favor of vm.expectRevert
 contract ERC20Test is Test {
+    event Transfer(address indexed from, address indexed to, uint256 amount);
+
+    event Approval(
+        address indexed owner,
+        address indexed spender,
+        uint256 amount
+    );
+
     IERC20 token;
 
     address public bob = address(0xb0b);
@@ -76,13 +85,17 @@ contract ERC20Test is Test {
     }
 
     function testApprove() public {
+        vm.expectEmit(true, true, false, true);
+        emit Approval(address(this), address(0xBEEF), 1e18);
         assertTrue(token.approve(address(0xBEEF), 1e18));
-
         assertEq(token.allowance(address(this), address(0xBEEF)), 1e18);
     }
 
     function testTransfer() public {
         token.mint(address(this), 1e18);
+
+        vm.expectEmit(true, true, false, true);
+        emit Transfer(address(this), address(0xBEEF), 1e18);
 
         assertTrue(token.transfer(address(0xBEEF), 1e18));
         assertEq(token.totalSupply(), 1e18);
@@ -303,10 +316,12 @@ contract ERC20Test is Test {
             )
         );
 
+        vm.expectEmit(true, true, false, true);
+        emit Approval(owner, address(0xCAFE), 1e18);
         token.permit(owner, address(0xCAFE), 1e18, block.timestamp, v, r, s);
 
-    //     assertEq(token.allowance(owner, address(0xCAFE)), 1e18);
-    //     assertEq(token.nonces(owner), 1);
+        assertEq(token.allowance(owner, address(0xCAFE)), 1e18);
+        assertEq(token.nonces(owner), 1);
     }
 
     function testFailPermitBadNonce() public {
@@ -345,7 +360,7 @@ contract ERC20Test is Test {
         token.permit(owner, address(0xCAFE), 1e18, block.timestamp + 1, v, r, s);
     }
 
-    function testFailPermitPastDeadline() public {
+    function testPermitPastDeadline() public {
         uint256 privateKey = 0xBEEF;
         address owner = vm.addr(privateKey);
 
@@ -360,6 +375,7 @@ contract ERC20Test is Test {
             )
         );
 
+        vm.expectRevert(bytes("PERMIT_DEADLINE_EXPIRED"));
         token.permit(owner, address(0xCAFE), 1e18, block.timestamp - 1, v, r, s);
     }
 
@@ -380,6 +396,25 @@ contract ERC20Test is Test {
 
         token.permit(owner, address(0xCAFE), 1e18, block.timestamp, v, r, s);
         token.permit(owner, address(0xCAFE), 1e18, block.timestamp, v, r, s);
+    }
+
+    function testInvalidSigner() public {
+        uint256 privateKey = 0xBEEF;
+        address owner = vm.addr(privateKey);
+
+        (uint8 v, bytes32 r, bytes32 s) = vm.sign(
+            privateKey,
+            keccak256(
+                abi.encodePacked(
+                    "\x19\x01",
+                    token.DOMAIN_SEPARATOR(),
+                    keccak256(abi.encode(PERMIT_TYPEHASH, owner, address(0xCAFE), 1e18, 0, block.timestamp))
+                )
+            )
+        );
+
+        vm.expectRevert(bytes("INVALID_SIGNER"));
+        token.permit(address(0xCAFE), address(0xCAFE), 1e18, block.timestamp, v, r, s);
     }
 
 

@@ -47,6 +47,7 @@
 #define constant PERMIT_TYPEHASH = 0x6e71edae12b1b97f4d1f60370fef10105fa2faae0126114a169c64845d6126c9 // keccak256("Permit(address owner,address spender,uint256 value,uint256 nonce,uint256 deadline)")
 #define constant UINT_256_MAX = 0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
 #define constant X_1901 = 0x1901000000000000000000000000000000000000000000000000000000000000
+#define constant ERROR_STRING = 0x08c379a000000000000000000000000000000000000000000000000000000000
 
 /* Constructor */
 #define macro CONSTRUCTOR() = takes(0) returns (0) {
@@ -188,17 +189,40 @@
     eq                                                                         // [owner == recovered address, recovered address, spender, value]
     iszero                                                                     // [owner != recovered address, recovered address, spender, value]
     invalidSigner jumpi                                                        // [recovered address, spender, value]
+    [APPROVAL_SLOT]                                                            // [slot, recovered address, spender, value]
+    STORE_ELEMENT_FROM_SLOT_AND_KEYS(0x00)                                     // []
 
-    STORE_ELEMENT_FROM_KEYS(0x00)                                              // []
-
-    // TODO: emit event
-
+    // Emit the Approval event
+    0x44 calldataload                                                          // [value]
+    0x00 mstore                                                                // []
+    0x24 calldataload                                                          // [to]
+    0x04 calldataload                                                          // [from, to]
+    [APPROVAL_EVENT_SIGNATURE]                                                 // [sig, from, to]
+    0x20 0x00                                                                  // [0, 32, sig, from, to]
+    log3                                                                       // []
     0x00 0x00 return
 
     expired:
+    0x5045524D49545F444541444C494E455F45585049524544000000000000000000         // ["PERMIT_DEADLINE_EXPIRED"]
+    0x17                                                                       // [23 (length), "PERMIT_DEADLINE_EXPIRED"]
+    REVERT_WITH_REASON(0x00)
+
     invalidSigner:  // todo: add revert strings
-    0x00 0x00 revert
+    0x494E56414C49445F5349474E4552000000000000000000000000000000000000         // ["INVALID_SIGNER"]
+    0x0e                                                                       // [14 (length), "INVALID_SIGNER"]
+    REVERT_WITH_REASON(0x00)
 }
+
+#define macro REVERT_WITH_REASON(mem_ptr) = takes(2) returns(0) {
+    // NOTE: String must be < 32 bytes
+    // [len, "str"]
+    [ERROR_STRING] <mem_ptr> mstore                                            // [len, "str"]   0x00 error sig
+    0x20 <mem_ptr> 0x04 add mstore                                             // [len, "str"]   0x00 error sig  0x04 offset
+    <mem_ptr> 0x24 add mstore                                                  // ["str"]        0x00 error sig  0x04 offset  0x24 len
+    <mem_ptr> 0x44 add mstore                                                  // []             0x00 error sig  0x04 offset  0x24 len  0x44: "string"
+    0x64 0x00 revert
+}
+
 
 #define macro NONCES() = takes (0) returns (0) {
     0x04 calldataload                                                          // [account]
@@ -209,15 +233,15 @@
 
 /* Metadata */
 #define macro NAME() = takes (0) returns (0) {
-    0x20 0x20 mstore
-    [META_NAME] 0x45 mstore
-    0x60 0x20 return
+    0x20 0x00 mstore
+    [META_NAME] 0x25 mstore
+    0x60 0x00 return
 }
 
 #define macro SYMBOL() = takes (0) returns (0) {
-    0x20 0x20 mstore
-    [META_SYMBOL] 0x43 mstore
-    0x60 0x20 return
+    0x20 0x00 mstore
+    [META_SYMBOL] 0x23 mstore
+    0x60 0x00 return
 }
 
 #define macro DECIMALS() = takes (0) returns (0) {
@@ -255,7 +279,17 @@
     caller                                                                     // [from, to, value]
     [APPROVAL_SLOT]                                                            // [slot, from, to, value]
     STORE_ELEMENT_FROM_SLOT_AND_KEYS(0x00)                                     // []
-    0x01 0x00 mstore
+
+    // Emit the Approval event
+    0x24 calldataload                                                          // [value]
+    0x00 mstore                                                                // []
+    0x04 calldataload                                                          // [to]
+    caller                                                                     // [from, to]
+    [APPROVAL_EVENT_SIGNATURE]                                                 // [sig, from, to]
+    0x20 0x00                                                                  // [0, 32, sig, from, to]
+    log3                                                                       // []
+
+    0x01 0x00 mstore  // return 01 for true
     0x20 0x00 return
 }
 
