@@ -1,10 +1,9 @@
 name: ci
 
-on: [push]
+on: [push, pull_request]
 
 jobs:
   tests:
-    name: Tests with Foundry
     runs-on: ubuntu-latest
 
     steps:
@@ -23,4 +22,5 @@ jobs:
           version: nightly
 
       - name: Run Tests
-        run: forge test -vvv
+        run: forge test -vv
+
