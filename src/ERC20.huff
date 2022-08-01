@@ -3,9 +3,12 @@
 /// @notice Adapted from Solmate
 /// https://github.com/transmissions11/solmate/blob/main/src/tokens/ERC20.sol
 
+// TODO: All revert strings (and related tests) have not been added.
+// Will do this when jtriley's Error Utils pr is merged
+
 
 /* Imports */
-#include "./utils/Ownable.huff"
+#include "./utils/TSOwnable.huff"
 #include "./utils/HashMap.huff"
 
 /* Interface */
@@ -47,18 +50,18 @@
 #define constant PERMIT_TYPEHASH = 0x6e71edae12b1b97f4d1f60370fef10105fa2faae0126114a169c64845d6126c9 // keccak256("Permit(address owner,address spender,uint256 value,uint256 nonce,uint256 deadline)")
 #define constant UINT_256_MAX = 0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
 #define constant X_1901 = 0x1901000000000000000000000000000000000000000000000000000000000000
-#define constant ERROR_STRING = 0x08c379a000000000000000000000000000000000000000000000000000000000
+#define constant ERROR_SIG = 0x08c379a000000000000000000000000000000000000000000000000000000000
 
 /* Constructor */
 #define macro CONSTRUCTOR() = takes(0) returns (0) {
-    OWNABLE_CONSTRUCTOR()                                                      // []
+    CONSTRUCTOR_TSOWNABLE()                                                    // []
     chainid [INITIAL_CHAIN_ID] sstore                                          // []
     COMPUTE_DOMAIN_SEPARATOR()                                                 // [DOMAIN SEPARATOR]
     [INITIAL_DOMAIN_SEPARATOR] sstore                                          // []
 }
 
 /* EIP-2612 */
-#define macro COMPUTE_DOMAIN_SEPARATOR() = takes (0) returns (1) {
+    #define macro COMPUTE_DOMAIN_SEPARATOR() = takes (0) returns (1) {
     [PERMIT_TYPEHASH]                                                          // [DOMAIN_SEPARATOR_3
     0x00 mstore                                                                // []
     [META_NAME] 0x20 mstore                                                    // []
@@ -216,7 +219,7 @@
 #define macro REVERT_WITH_REASON(mem_ptr) = takes(2) returns(0) {
     // NOTE: String must be < 32 bytes
     // [len, "str"]
-    [ERROR_STRING] <mem_ptr> mstore                                            // [len, "str"]   0x00 error sig
+    [ERROR_SIG] <mem_ptr> mstore                                               // [len, "str"]   0x00 error sig
     0x20 <mem_ptr> 0x04 add mstore                                             // [len, "str"]   0x00 error sig  0x04 offset
     <mem_ptr> 0x24 add mstore                                                  // ["str"]        0x00 error sig  0x04 offset  0x24 len
     <mem_ptr> 0x44 add mstore                                                  // []             0x00 error sig  0x04 offset  0x24 len  0x44: "string"
@@ -226,7 +229,7 @@
 
 #define macro NONCES() = takes (0) returns (0) {
     0x04 calldataload                                                          // [account]
-    [NONCE_SLOT] LOAD_ELEMENT_FROM_KEYS(0x00)                              // [nonce]
+    [NONCE_SLOT] LOAD_ELEMENT_FROM_KEYS(0x00)                                  // [nonce]
     0x00 mstore                                                                // []
     0x20 0x00 return                                                           // []
 }
@@ -493,7 +496,7 @@
     dup1 __FUNC_SIG(decimals)           eq decimalsJump         jumpi
     dup1 __FUNC_SIG(DOMAIN_SEPARATOR)   eq domainSeparatorJump  jumpi
 
-    // TODO: ADD EXTERNAL MAIN'S, OWNABLE
+    MAIN_TSOWNABLE()
 
     0x00 0x00 revert
 

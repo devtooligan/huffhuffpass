@@ -1,9 +1,6 @@
-[submodule "lib/foundry-huff"]
-	path = lib/foundry-huff
-	url = https://github.com/huff-language/foundry-huff
 [submodule "lib/forge-std"]
 	path = lib/forge-std
 	url = https://github.com/foundry-rs/forge-std
-[submodule "lib/TSOwnabe-Huff"]
-	path = lib/TSOwnabe-Huff
-	url = https://github.com/byterocket/TSOwnabe-Huff
+[submodule "lib/foundry-huff"]
+	path = lib/foundry-huff
+	url = https://github.com/huff-language/foundry-huff

@@ -4,14 +4,9 @@ pragma solidity 0.8.15;
 import "foundry-huff/HuffDeployer.sol";
 import "forge-std/Test.sol";
 import "forge-std/console.sol";
-import {IERC20} from "../src/interfaces/IERC20.sol";
+import {IERC20Ownable as IERC20} from "../src/interfaces/IERC20.sol";
 
-/// @author These tests have been adapted from Solmate.
-/// The main changes are:
-///  - Use forge-std/Test.sol instead of DS-Test+
-///  - Instantiate the Huff contract within the tests as opposed to the abstract contract pattern used by Solmate
-///  - Using Foundry exclusively so DappTools invariant tests have been removed
-///  - Discontinue use of testFail pattern in favor of vm.expectRevert
+/// @author These tests have been adapted from Solmate and include additional coverage.
 contract ERC20Test is Test {
     event Transfer(address indexed from, address indexed to, uint256 amount);
 
@@ -21,9 +16,13 @@ contract ERC20Test is Test {
         uint256 amount
     );
 
+    event NewOwner(address indexed oldOwner,address indexed newOwner);
+    event NewPendingOwner(address indexed oldOwner, address indexed newOwner);
+
     IERC20 token;
 
-    address public bob = address(0xb0b);
+    address public bob = address(0xB0B);
+    address public deployer = address(0xC0DE60D);
 
     bytes32 constant PERMIT_TYPEHASH =
         keccak256(
@@ -31,42 +30,83 @@ contract ERC20Test is Test {
         );
 
     function setUp() public {
-        token = IERC20(HuffDeployer.deploy("erc20"));
+        vm.startPrank(deployer);
+        address tokenAddress = HuffDeployer.deploy("erc20");
+        token = IERC20(tokenAddress);
+        vm.stopPrank();
     }
 
-    function testMetadata() public {
-        assertEq(token.name(), "Token");
-        assertEq(token.symbol(), "TKN");
-        assertEq(token.decimals(), 18);
-    }
+    // SOLMATE ERC20 and OWNABLE tests below.  These are additional tests.
 
     function testNonPayable() public {
         vm.deal(address(this), 10 ether);
 
         // mint
-        (bool success,) = address(token).call{value: 1 ether}(abi.encodeWithSelector(token.mint.selector, address(0xBEEF), 1e18));
+        (bool success, ) = address(token).call{value: 1 ether}(
+            abi.encodeWithSelector(token.mint.selector, address(0xBEEF), 1e18)
+        );
         assertFalse(success);
         // burn
-        (success,) = address(token).call{value: 1 ether}(abi.encodeWithSelector(token.burn.selector, address(0xBEEF), 1e18));
+        (success, ) = address(token).call{value: 1 ether}(
+            abi.encodeWithSelector(token.burn.selector, address(0xBEEF), 1e18)
+        );
         assertFalse(success);
         // approve
-        (success,) = address(token).call{value: 1 ether}(abi.encodeWithSelector(token.approve.selector, address(0xBEEF), 1e18));
+        (success, ) = address(token).call{value: 1 ether}(
+            abi.encodeWithSelector(
+                token.approve.selector,
+                address(0xBEEF),
+                1e18
+            )
+        );
         assertFalse(success);
         // transfer
-        (success,) = address(token).call{value: 1 ether}(abi.encodeWithSelector(token.transfer.selector, address(0xBEEF), 1e18));
+        (success, ) = address(token).call{value: 1 ether}(
+            abi.encodeWithSelector(
+                token.transfer.selector,
+                address(0xBEEF),
+                1e18
+            )
+        );
         // transferFrom
-        (success,) = address(token).call{value: 1 ether}(abi.encodeWithSelector(token.transferFrom.selector, address(this), address(0xBEEF), 1e18));
+        (success, ) = address(token).call{value: 1 ether}(
+            abi.encodeWithSelector(
+                token.transferFrom.selector,
+                address(this),
+                address(0xBEEF),
+                1e18
+            )
+        );
         assertFalse(success);
         // name
-        (success,) = address(token).call{value: 1 ether}(abi.encodeWithSelector(token.name.selector, address(0xBEEF), 1e18));
+        (success, ) = address(token).call{value: 1 ether}(
+            abi.encodeWithSelector(token.name.selector, address(0xBEEF), 1e18)
+        );
         assertFalse(success);
         // balanceOf
-        (success,) = address(token).call{value: 1 ether}(abi.encodeWithSelector(token.balanceOf.selector, address(0xBEEF)));
+        (success, ) = address(token).call{value: 1 ether}(
+            abi.encodeWithSelector(token.balanceOf.selector, address(0xBEEF))
+        );
         assertFalse(success);
         // no data
-        (success,) = address(token).call{value: 1 ether}(abi.encode(0x0));
+        (success, ) = address(token).call{value: 1 ether}(abi.encode(0x0));
         assertFalse(success);
+    }
 
+    // SOLMATE TESTS - These have been modified as follows:
+    //   1. Use forge-std/Test.sol instead of DS-Test+
+    //   2. Instantiate the Huff contract within the tests as opposed to the abstract contract pattern used by Solmate
+    //   3. Invariant tests changed to fuzzing.  (DappTools not supported here)
+    //   4. Discontinue use of testFail (DappTools pattern) in favor of vm.expectRevert
+    //   5. Additional coverage added to test all events
+    //   6. Additional coverage added to test all instances of require()
+
+    // SOLMATE ERC20 tests
+    // https://github.com/transmissions11/solmate/blob/main/src/test/ERC20.t.sol
+    function testMetadata() public {
+        assertEq(token.name(), "Token");
+        assertEq(token.symbol(), "TKN");
+        assertEq(token.decimals(), 18);
     }
 
     function testMint() public {
@@ -334,7 +374,16 @@ contract ERC20Test is Test {
                 abi.encodePacked(
                     "\x19\x01",
                     token.DOMAIN_SEPARATOR(),
-                    keccak256(abi.encode(PERMIT_TYPEHASH, owner, address(0xCAFE), 1e18, 1, block.timestamp))
+                    keccak256(
+                        abi.encode(
+                            PERMIT_TYPEHASH,
+                            owner,
+                            address(0xCAFE),
+                            1e18,
+                            1,
+                            block.timestamp
+                        )
+                    )
                 )
             )
         );
@@ -352,12 +401,29 @@ contract ERC20Test is Test {
                 abi.encodePacked(
                     "\x19\x01",
                     token.DOMAIN_SEPARATOR(),
-                    keccak256(abi.encode(PERMIT_TYPEHASH, owner, address(0xCAFE), 1e18, 0, block.timestamp))
+                    keccak256(
+                        abi.encode(
+                            PERMIT_TYPEHASH,
+                            owner,
+                            address(0xCAFE),
+                            1e18,
+                            0,
+                            block.timestamp
+                        )
+                    )
                 )
             )
         );
 
-        token.permit(owner, address(0xCAFE), 1e18, block.timestamp + 1, v, r, s);
+        token.permit(
+            owner,
+            address(0xCAFE),
+            1e18,
+            block.timestamp + 1,
+            v,
+            r,
+            s
+        );
     }
 
     function testPermitPastDeadline() public {
@@ -370,13 +436,30 @@ contract ERC20Test is Test {
                 abi.encodePacked(
                     "\x19\x01",
                     token.DOMAIN_SEPARATOR(),
-                    keccak256(abi.encode(PERMIT_TYPEHASH, owner, address(0xCAFE), 1e18, 0, block.timestamp - 1))
+                    keccak256(
+                        abi.encode(
+                            PERMIT_TYPEHASH,
+                            owner,
+                            address(0xCAFE),
+                            1e18,
+                            0,
+                            block.timestamp - 1
+                        )
+                    )
                 )
             )
         );
 
         vm.expectRevert(bytes("PERMIT_DEADLINE_EXPIRED"));
-        token.permit(owner, address(0xCAFE), 1e18, block.timestamp - 1, v, r, s);
+        token.permit(
+            owner,
+            address(0xCAFE),
+            1e18,
+            block.timestamp - 1,
+            v,
+            r,
+            s
+        );
     }
 
     function testFailPermitReplay() public {
@@ -389,7 +472,16 @@ contract ERC20Test is Test {
                 abi.encodePacked(
                     "\x19\x01",
                     token.DOMAIN_SEPARATOR(),
-                    keccak256(abi.encode(PERMIT_TYPEHASH, owner, address(0xCAFE), 1e18, 0, block.timestamp))
+                    keccak256(
+                        abi.encode(
+                            PERMIT_TYPEHASH,
+                            owner,
+                            address(0xCAFE),
+                            1e18,
+                            0,
+                            block.timestamp
+                        )
+                    )
                 )
             )
         );
@@ -408,14 +500,74 @@ contract ERC20Test is Test {
                 abi.encodePacked(
                     "\x19\x01",
                     token.DOMAIN_SEPARATOR(),
-                    keccak256(abi.encode(PERMIT_TYPEHASH, owner, address(0xCAFE), 1e18, 0, block.timestamp))
+                    keccak256(
+                        abi.encode(
+                            PERMIT_TYPEHASH,
+                            owner,
+                            address(0xCAFE),
+                            1e18,
+                            0,
+                            block.timestamp
+                        )
+                    )
                 )
             )
         );
 
         vm.expectRevert(bytes("INVALID_SIGNER"));
-        token.permit(address(0xCAFE), address(0xCAFE), 1e18, block.timestamp, v, r, s);
+        token.permit(
+            address(0xCAFE),
+            address(0xCAFE),
+            1e18,
+            block.timestamp,
+            v,
+            r,
+            s
+        );
     }
 
+    // SOLMATE OWNED tests
+    // https://github.com/transmissions11/solmate/blob/main/src/test/Owned.t.sol
 
+    function testSetPendingOwner() public {
+        // assertEq(token.pendingOwner(), address(0x0));
+        address owner = token.owner(); // TODO: Update when bug is fixed with HuffDeployer address
+        address newOwner = address(0xBADBABE);
+
+        // vm.expectEmit(true, true, false, false);
+        // emit NewPendingOwner(owner, newOwner);
+
+        vm.startPrank(owner);
+        token.setPendingOwner(newOwner);
+        assertEq(token.pendingOwner(), newOwner);
+    }
+
+    function testAcceptOwnership() public {
+        address owner = token.owner(); // TODO: Update when bug is fixed with HuffDeployer address
+        address newOwner = address(0xBADBABE);
+
+        vm.startPrank(owner);
+        token.setPendingOwner(newOwner);
+        assertEq(token.pendingOwner(), newOwner);
+
+        // calling acceptOwnership from unknown address reverts
+        vm.expectRevert();
+        token.acceptOwnership();
+
+        // calling acceptOwnership emits event
+        vm.startPrank(newOwner);
+        vm.expectEmit(true, true, false, false);
+        emit NewOwner(owner, newOwner);
+        token.acceptOwnership();
+
+        assertEq(token.owner(), newOwner);
+
+    }
+
+    function testCallFunctionAsNonOwner(address owner) public {
+        vm.assume(owner != token.owner());
+
+        vm.expectRevert();
+        token.setPendingOwner(owner);
+    }
 }
