@@ -3,6 +3,17 @@
 
 pragma solidity ^0.8.0;
 
+
+interface TSOwnable {
+    function owner() external returns (address);
+    function pendingOwner() external returns (address);
+    function setPendingOwner(address) external;
+    function acceptOwnership() external;
+
+    event NewOwner(address indexed,address indexed);
+    event NewPendingOwner(address indexed,address indexed);
+}
+
 /**
  * @dev Interface of the ERC20 standard as defined in the EIP.
  */
@@ -117,3 +128,5 @@ interface IERC20 {
         uint256 amount
     ) external returns (bool);
 }
+
+interface IERC20Ownable is TSOwnable, IERC20 {}

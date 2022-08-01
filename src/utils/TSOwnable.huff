@@ -4,6 +4,9 @@
 ///
 /// @author merkleplant (modified by @devtooligan)
 
+
+// TODO: Add require reason strings
+
 // -----------------------------------------------------------------------------
 // External Interface
 
@@ -89,7 +92,7 @@
     dup1
 
     // Emit NewPendingOwner event
-    [PENDING_OWNER_SLOT] sload [EVENT_NEW_PENDING_OWNER] 0x00 0x00
+    [OWNER_SLOT] sload [EVENT_NEW_PENDING_OWNER] 0x00 0x00
     log3
 
     // Store address as pending owner
@@ -135,7 +138,6 @@
 // Function Dispatching
 
 #define macro MAIN_TSOWNABLE() = takes (0) returns (0) {
-    0x00 calldataload 0xe0 shr // Get function signature
 
     // cast sig "setPendingOwner(address)"
     dup1 0xc42069ec eq set_pending_owner jumpi
