@@ -534,10 +534,10 @@ contract ERC20Test is Test {
         address owner = token.owner(); // TODO: Update when bug is fixed with HuffDeployer address
         address newOwner = address(0xBADBABE);
 
-        // vm.expectEmit(true, true, false, false);
-        // emit NewPendingOwner(owner, newOwner);
+        vm.expectEmit(true, true, false, false);
+        emit NewPendingOwner(owner, newOwner);
 
-        vm.startPrank(owner);
+        vm.prank(owner);
         token.setPendingOwner(newOwner);
         assertEq(token.pendingOwner(), newOwner);
     }
@@ -546,7 +546,7 @@ contract ERC20Test is Test {
         address owner = token.owner(); // TODO: Update when bug is fixed with HuffDeployer address
         address newOwner = address(0xBADBABE);
 
-        vm.startPrank(owner);
+        vm.prank(owner);
         token.setPendingOwner(newOwner);
         assertEq(token.pendingOwner(), newOwner);
 
@@ -555,7 +555,7 @@ contract ERC20Test is Test {
         token.acceptOwnership();
 
         // calling acceptOwnership emits event
-        vm.startPrank(newOwner);
+        vm.prank(newOwner);
         vm.expectEmit(true, true, false, false);
         emit NewOwner(owner, newOwner);
         token.acceptOwnership();
