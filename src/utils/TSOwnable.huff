@@ -64,13 +64,13 @@
 // -----------------------------------------------------------------------------
 // Access Handler
 
-#define macro ACCESS_ONLY_OWNER() = takes(0) returns (0) {
+#define macro ONLY_OWNER() = takes(0) returns (0) {
     [OWNER_SLOT] sload caller eq is_owner jumpi
         0x00 0x00 revert
     is_owner:
 }
 
-#define macro ACCESS_ONLY_PENDING_OWNER() = takes (0) returns (0) {
+#define macro ONLY_PENDING_OWNER() = takes (0) returns (0) {
     [PENDING_OWNER_SLOT] sload caller eq is_pending_owner jumpi
         0x00 0x00 revert
     is_pending_owner:
@@ -81,7 +81,7 @@
 
 #define macro OWNABLE_SET_PENDING_OWNER() = takes (0) returns (0) {
     NON_PAYABLE()
-    ACCESS_ONLY_OWNER()
+    ONLY_OWNER()
 
     // Read argument and mask to address
     0x04 calldataload ADDRESS_MASK()
@@ -106,7 +106,7 @@
 
 #define macro OWNABLE_ACCEPT_OWNERSHIP() = takes (0) returns (0) {
     NON_PAYABLE()
-    ACCESS_ONLY_PENDING_OWNER()
+    ONLY_PENDING_OWNER()
 
     // Emit NewOwner event
     caller [OWNER_SLOT] sload [EVENT_NEW_OWNER] 0x00 0x00
