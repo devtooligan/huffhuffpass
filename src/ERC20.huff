@@ -8,7 +8,6 @@
 
 
 /* Imports */
-#include "./utils/TSOwnable.huff"
 #include "./utils/HashMap.huff"
 
 /* Interface */
@@ -53,8 +52,7 @@
 #define constant ERROR_SIG = 0x08c379a000000000000000000000000000000000000000000000000000000000
 
 /* Constructor */
-#define macro CONSTRUCTOR() = takes(0) returns (0) {
-    CONSTRUCTOR_TSOWNABLE()                                                    // []
+#define macro CONSTRUCTOR_ERC20() = takes(0) returns (0) {
     chainid [INITIAL_CHAIN_ID] sstore                                          // []
     COMPUTE_DOMAIN_SEPARATOR()                                                 // [DOMAIN SEPARATOR]
     [INITIAL_DOMAIN_SEPARATOR] sstore                                          // []
@@ -488,9 +486,9 @@
 }
 
 // Main Macro
-#define macro MAIN() = takes(0) returns (0) {
+#define macro MAIN_ERC20() = takes(1) returns (1) {
     // Identify which function is being called.
-    0x00 calldataload 0xE0 shr                                                 // [fn sig]
+    // [func sig]
     dup1 __FUNC_SIG(transfer)           eq transferJump         jumpi
     dup1 __FUNC_SIG(transferFrom)       eq transferFromJump     jumpi
     dup1 __FUNC_SIG(mint)               eq mintJump             jumpi
@@ -507,9 +505,7 @@
     dup1 __FUNC_SIG(decimals)           eq decimalsJump         jumpi
     dup1 __FUNC_SIG(DOMAIN_SEPARATOR)   eq domainSeparatorJump  jumpi
 
-    MAIN_TSOWNABLE()
-
-    0x00 0x00 revert
+    unknown jump
 
     allowanceJump:
         ALLOWANCE()
@@ -553,4 +549,5 @@
     transferJump:
         TRANSFER()
 
+    unknown:
 }

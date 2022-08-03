@@ -31,7 +31,7 @@ contract ERC20Test is Test {
 
     function setUp() public {
         vm.startPrank(deployer);
-        address tokenAddress = HuffDeployer.deploy("erc20");
+        address tokenAddress = HuffDeployer.deploy("erc20.main");
         token = IERC20(tokenAddress);
         vm.stopPrank();
     }

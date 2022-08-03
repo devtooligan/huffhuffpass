@@ -1,0 +1,21 @@
+/// @author devtooligan
+/// @title ERC20.main.huff
+
+/* Imports */
+#include "./ERC20.huff"
+#include "./utils/TSOwnable.huff"
+
+/* Constructor */
+#define macro CONSTRUCTOR() = takes(0) returns (0) {
+    CONSTRUCTOR_TSOWNABLE()                                                    // []
+    CONSTRUCTOR_ERC20()                                                        // []
+}
+
+// Main Macro
+#define macro MAIN() = takes(0) returns (0) {
+    0x00 calldataload 0xE0 shr                                                 // [func sig]
+    MAIN_ERC20()
+    MAIN_TSOWNABLE()
+    0x00 0x00 revert
+
+}
