@@ -88,7 +88,7 @@
     done jump
 
     useInitial:
-    [INITIAL_DOMAIN_SEPARATOR] sload                                           // [INITIAL_DOMAIN_SEPARATOR]
+        [INITIAL_DOMAIN_SEPARATOR] sload                                           // [INITIAL_DOMAIN_SEPARATOR]
 
     done:
 }
@@ -206,14 +206,14 @@
     0x00 0x00 return
 
     expired:
-    0x5045524D49545F444541444C494E455F45585049524544000000000000000000         // ["PERMIT_DEADLINE_EXPIRED"]
-    0x17                                                                       // [23 (length), "PERMIT_DEADLINE_EXPIRED"]
-    REVERT_WITH_REASON(0x00)
+        0x5045524D49545F444541444C494E455F45585049524544000000000000000000         // ["PERMIT_DEADLINE_EXPIRED"]
+        0x17                                                                       // [23 (length), "PERMIT_DEADLINE_EXPIRED"]
+        REVERT_WITH_REASON(0x00)
 
     invalidSigner:  // todo: add revert strings
-    0x494E56414C49445F5349474E4552000000000000000000000000000000000000         // ["INVALID_SIGNER"]
-    0x0e                                                                       // [14 (length), "INVALID_SIGNER"]
-    REVERT_WITH_REASON(0x00)
+        0x494E56414C49445F5349474E4552000000000000000000000000000000000000         // ["INVALID_SIGNER"]
+        0x0e                                                                       // [14 (length), "INVALID_SIGNER"]
+        REVERT_WITH_REASON(0x00)
 }
 
 #define macro REVERT_WITH_REASON(mem_ptr) = takes(2) returns(0) {
@@ -357,24 +357,24 @@
     approved2 jump                                                             // [from, to]
 
     approved1:                                                                 // [value, approved, approved, from, to]
-    pop pop pop                                                                // [from, to]
+        pop pop pop                                                                // [from, to]
 
     approved2:                                                                 // [from, to]
-    0x44 calldataload                                                          // [value, from, to]
+        0x44 calldataload                                                          // [value, from, to]
 
-    // Update the balances of the sender and recipient.
-    _TRANSFER_TAKE_FROM()                                                       // [value, from, to]
-    _TRANSFER_GIVE_TO()                                                         // [value, from, to]
+        // Update the balances of the sender and recipient.
+        _TRANSFER_TAKE_FROM()                                                       // [value, from, to]
+        _TRANSFER_GIVE_TO()                                                         // [value, from, to]
 
-    // Emit the transfer event. // TODO consider macro
-    0x00 mstore                                                                // [from, to]
-    [TRANSFER_EVENT_SIGNATURE]                                                 // [sig, from, to]
-    0x20 0x00                                                                  // [0, 32, sig, from, to]
-    log3                                                                       // []
+        // Emit the transfer event. // TODO consider macro
+        0x00 mstore                                                                // [from, to]
+        [TRANSFER_EVENT_SIGNATURE]                                                 // [sig, from, to]
+        0x20 0x00                                                                  // [0, 32, sig, from, to]
+        log3                                                                       // []
 
-    // Return "1" to represent a succesful transfer.
-    0x01 0x00 mstore
-    0x20 0x00 return
+        // Return "1" to represent a succesful transfer.
+        0x01 0x00 mstore
+        0x20 0x00 return
 
     insufficientApproval:
         0x00 0x00 revert
@@ -394,11 +394,11 @@
 
     // Update the sender's balance.
     valid:
-    dup2                                                                       // [value, balance, value, from, to]
-    swap1                                                                      // [balance, value, value, from, to]
-    sub                                                                        // [balance - value, value, from, to]
-    dup3                                                                       // [from, balance-value, value, from, to]
-    [BALANCE_SLOT] STORE_ELEMENT_FROM_KEYS(0x00)                           // [value, from, to]
+        dup2                                                                       // [value, balance, value, from, to]
+        swap1                                                                      // [balance, value, value, from, to]
+        sub                                                                        // [balance - value, value, from, to]
+        dup3                                                                       // [from, balance-value, value, from, to]
+        [BALANCE_SLOT] STORE_ELEMENT_FROM_KEYS(0x00)                           // [value, from, to]
 }
 
 // TODO: OVERFLOW CHECK?
@@ -501,45 +501,45 @@
     0x00 0x00 revert
 
     allowanceJump:
-    ALLOWANCE()
+        ALLOWANCE()
 
     approveJump:
-    APPROVE()
+        APPROVE()
 
     balanceOfJump:
-    BALANCE_OF()
+        BALANCE_OF()
 
     burnJump:
-    BURN()
+        BURN()
 
     decimalsJump:
-    DECIMALS()
+        DECIMALS()
 
     domainSeparatorJump:
-    DOMAIN_SEPARATOR()
+        DOMAIN_SEPARATOR()
 
     mintJump:
-    MINT()
+        MINT()
 
     nameJump:
-    NAME()
+        NAME()
 
     noncesJump:
-    NONCES()
+        NONCES()
 
     permitJump:
-    PERMIT()
+        PERMIT()
 
     symbolJump:
-    SYMBOL()
+        SYMBOL()
 
     totalSupplyJump:
-    TOTAL_SUPPLY()
+        TOTAL_SUPPLY()
 
     transferFromJump:
-    TRANSFER_FROM()
+        TRANSFER_FROM()
 
     transferJump:
-    TRANSFER()
+        TRANSFER()
 
 }
