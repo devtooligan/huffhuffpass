@@ -540,6 +540,7 @@ contract ERC20Test is Test {
         vm.startPrank(owner);
         token.setPendingOwner(newOwner);
         assertEq(token.pendingOwner(), newOwner);
+        vm.stopPrank();
     }
 
     function testAcceptOwnership() public {
@@ -549,6 +550,7 @@ contract ERC20Test is Test {
         vm.startPrank(owner);
         token.setPendingOwner(newOwner);
         assertEq(token.pendingOwner(), newOwner);
+        vm.stopPrank();
 
         // calling acceptOwnership from unknown address reverts
         vm.expectRevert();
@@ -561,7 +563,7 @@ contract ERC20Test is Test {
         token.acceptOwnership();
 
         assertEq(token.owner(), newOwner);
-
+        vm.stopPrank();
     }
 
     function testCallFunctionAsNonOwner(address owner) public {
