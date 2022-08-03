@@ -7,6 +7,7 @@
 /// https://github.com/transmissions11/solmate/blob/main/src/tokens/ERC20.sol
 
 // TODO: All revert strings (and related tests) have not been added.
+// TODO: Use Jtriley's error utils
 
 /*//////////////////////////////////////////////////////////////////
 //                            INTERFACE
@@ -25,11 +26,8 @@
 //                              EVENTS
 //////////////////////////////////////////////////////////////////*/
 
-#define event Approve(address,address,uint256)
-#define constant APPROVAL_EVENT_SIGNATURE = 0x8C5BE1E5EBEC7D5BD14F71427D1E84F3DD0314C0F7B2291E5B200AC8C7C3B925
-
+#define event Approval(address,address,uint256)
 #define event Transfer(address,address,uint256)
-#define constant TRANSFER_EVENT_SIGNATURE = 0xDDF252AD1BE2C89B69C2B068FC378DAA952BA7F163C4A11628F55A4DF523B3EF
 
 // todo: use __EVENT_HASH fn
 
@@ -100,7 +98,7 @@
     0x00 mstore                                                                // []
     0x04 calldataload                                                          // [to]
     caller                                                                     // [from, to]
-    [APPROVAL_EVENT_SIGNATURE]                                                 // [sig, from, to]
+    __EVENT_HASH(Approval)                                                 // [sig, from, to]
     0x20 0x00                                                                  // [0, 32, sig, from, to]
     log3                                                                       // []
 
@@ -122,7 +120,7 @@
 
     // Emit the transfer event. // TODO consider macro
     0x00 mstore                                                                // [from, to]
-    [TRANSFER_EVENT_SIGNATURE]                                                 // [sig, from, to]
+    __EVENT_HASH(Transfer)                                                 // [sig, from, to]
     0x20 0x00                                                                  // [0, 32, sig, from, to]
     log3                                                                       // []
 
@@ -182,7 +180,7 @@
 
         // Emit the transfer event. // TODO consider macro
         0x00 mstore                                                                // [from, to]
-        [TRANSFER_EVENT_SIGNATURE]                                                 // [sig, from, to]
+        __EVENT_HASH(Transfer)                                                 // [sig, from, to]
         0x20 0x00                                                                  // [0, 32, sig, from, to]
         log3                                                                       // []
 
@@ -355,7 +353,7 @@
     0x00 mstore                                                                // []
     0x24 calldataload                                                          // [to]
     0x04 calldataload                                                          // [from, to]
-    [APPROVAL_EVENT_SIGNATURE]                                                 // [sig, from, to]
+    __EVENT_HASH(Approval)                                                 // [sig, from, to]
     0x20 0x00                                                                  // [0, 32, sig, from, to]
     log3                                                                       // []
     0x00 0x00 return
@@ -458,7 +456,7 @@
 
     // Emit the transfer event.
     0x00 mstore                                                                // [from, to]
-    [TRANSFER_EVENT_SIGNATURE]                                                 // [sig, from, to]
+    __EVENT_HASH(Transfer)                                                 // [sig, from, to]
     0x20 0x00                                                                  // [0, 32, sig, from, to]
     log3                                                                       // []
 }
@@ -474,7 +472,7 @@
 
     // Emit the transfer event.
     0x00 mstore                                                                // [from, to]
-    [TRANSFER_EVENT_SIGNATURE]                                                 // [sig, from, to]
+    __EVENT_HASH(Transfer)                                                 // [sig, from, to]
     0x20 0x00                                                                  // [0, 32, sig, from, to]
     log3                                                                       // []
 }
