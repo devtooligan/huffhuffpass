@@ -95,6 +95,7 @@
 
 
 #define macro DOMAIN_SEPARATOR() = takes (0) returns (0) {
+    NON_PAYABLE()
     _DOMAIN_SEPARATOR()
     0x00 mstore                                                                // [domain separator]
     0x20 0x00 return                                                           // []
@@ -117,6 +118,7 @@
 
 
 #define macro PERMIT() = takes (0) returns (0) {
+    NON_PAYABLE()
     // permit() fn sig for reference:
     //     address owner, //       0x04
     //     address spender, //     0x24
@@ -236,24 +238,28 @@
 
 /* Metadata */
 #define macro NAME() = takes (0) returns (0) {
+    NON_PAYABLE()
     0x20 0x00 mstore
     [META_NAME] 0x25 mstore
     0x60 0x00 return
 }
 
 #define macro SYMBOL() = takes (0) returns (0) {
+    NON_PAYABLE()
     0x20 0x00 mstore
     [META_SYMBOL] 0x23 mstore
     0x60 0x00 return
 }
 
 #define macro DECIMALS() = takes (0) returns (0) {
+    NON_PAYABLE()
     [META_DECIMALS] 0x00 mstore
     0x20 0x00 return
 }
 
 /* Accounting Functions */
 #define macro BALANCE_OF() = takes (0) returns (0) {
+    NON_PAYABLE()
     0x04 calldataload                                                          // [account]
     [BALANCE_SLOT] LOAD_ELEMENT_FROM_KEYS(0x00)                                // [balance]
     0x00 mstore                                                                // []
@@ -261,6 +267,7 @@
 }
 
 #define macro TOTAL_SUPPLY() = takes (0) returns (0) {
+    NON_PAYABLE()
     [TOTAL_SUPPLY_SLOT] sload                                                  // [supply]
     0x00 mstore                                                                // []
     0x20 0x00 return                                                           // []
@@ -268,6 +275,7 @@
 
 /* Approval Functions */
 #define macro ALLOWANCE() = takes (0) returns (0) {
+    NON_PAYABLE()
     0x24 calldataload                                                          // [to]
     0x04 calldataload                                                          // [from, to]
     [APPROVAL_SLOT]                                                            // [slot, from, to]
@@ -277,6 +285,7 @@
 }
 
 #define macro APPROVE() = takes (0) returns (0) {
+    NON_PAYABLE()
     0x24 calldataload                                                          // [value]
     0x04 calldataload                                                          // [to, value]
     caller                                                                     // [from, to, value]
@@ -298,6 +307,7 @@
 
 /* Transfer Functions */
 #define macro TRANSFER() = takes(0) returns(1) {
+    NON_PAYABLE()
     // Setup the stack for the transfer function.
     0x04 calldataload                                                          // [to]
     caller                                                                     // [from, to]
@@ -319,6 +329,7 @@
 }
 
 #define macro TRANSFER_FROM() = takes(0) returns(1) { // TODO: is self?
+    NON_PAYABLE()
     // Setup the stack for the transfer function.
     0x24 calldataload                                                          // [to]
     0x04 calldataload                                                          // [from, to]
@@ -416,6 +427,7 @@
 
 /* Permissioned Functions */
 #define macro BURN() = takes(0) returns (0) {
+    NON_PAYABLE()
     // Setup the stack for the burn function.
     0x00                                                                       // [to (0x00)]
     0x04 calldataload                                                          // [from, to]
@@ -437,6 +449,7 @@
 
 
 #define macro MINT() = takes(0) returns (0) {
+    NON_PAYABLE()
     // Ensure that the sender is the owner of the contract.
     // ONLY_OWNER()
 
@@ -476,8 +489,6 @@
 
 // Main Macro
 #define macro MAIN() = takes(0) returns (0) {
-    NON_PAYABLE()
-
     // Identify which function is being called.
     0x00 calldataload 0xE0 shr                                                 // [fn sig]
     dup1 __FUNC_SIG(transfer)           eq transferJump         jumpi

@@ -80,6 +80,7 @@
 // Mutating Functions
 
 #define macro OWNABLE_SET_PENDING_OWNER() = takes (0) returns (0) {
+    NON_PAYABLE()
     ACCESS_ONLY_OWNER()
 
     // Read argument and mask to address
@@ -104,6 +105,7 @@
 }
 
 #define macro OWNABLE_ACCEPT_OWNERSHIP() = takes (0) returns (0) {
+    NON_PAYABLE()
     ACCESS_ONLY_PENDING_OWNER()
 
     // Emit NewOwner event
@@ -123,15 +125,27 @@
 // View Functions
 
 #define macro OWNABLE_GET_OWNER() = takes (0) returns (0) {
+    NON_PAYABLE()
     [OWNER_SLOT] sload
     0x00 mstore
     0x20 0x00 return
 }
 
 #define macro OWNABLE_GET_PENDING_OWNER() = takes (0) returns (0) {
+    NON_PAYABLE()
     [PENDING_OWNER_SLOT] sload
     0x00 mstore
     0x20 0x00 return
+}
+
+/* Utility Functions */
+#define macro NON_PAYABLE() = takes(0) returns (0) {
+    callvalue iszero                                                           // [msg.value == 0]
+    novalue jumpi                                                              // []
+
+    // TODO: Add revert string
+    0x00 0x00 revert
+    novalue:
 }
 
 // -----------------------------------------------------------------------------
