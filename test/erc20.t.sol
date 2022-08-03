@@ -29,9 +29,28 @@ contract ERC20Test is Test {
             "Permit(address owner,address spender,uint256 value,uint256 nonce,uint256 deadline)"
         );
 
+    // "Token"
+    string public constant NAME = "Token";
+    bytes32 public constant META_NAME = bytes32(0x546f6b656e000000000000000000000000000000000000000000000000000000);
+    uint256 public constant META_NAME_LENGTH = uint(0x5);
+
+    // "TKN"
+    string public constant SYMBOL = "TKN";
+    bytes32 public constant META_SYMBOL = bytes32(0x544B4E0000000000000000000000000000000000000000000000000000000000);
+    uint256 public constant META_SYMBOL_LENGTH = uint(0x3);
+
+    // 18
+    uint256 public constant DECIMALS = uint(0x12);
+
     function setUp() public {
         vm.startPrank(deployer);
-        address tokenAddress = HuffDeployer.deploy("erc20.main");
+        address tokenAddress = HuffDeployer.config()
+            .with_bytes32_constant("META_NAME", META_NAME)
+            .with_uint_constant("META_NAME_LENGTH", META_NAME_LENGTH)
+            .with_bytes32_constant("META_SYMBOL", META_SYMBOL)
+            .with_uint_constant("META_SYMBOL_LENGTH", META_SYMBOL_LENGTH)
+            .with_uint_constant("META_DECIMALS", DECIMALS)
+            .deploy("ERC20.main");
         token = IERC20(tokenAddress);
         vm.stopPrank();
     }
@@ -104,9 +123,9 @@ contract ERC20Test is Test {
     // SOLMATE ERC20 tests
     // https://github.com/transmissions11/solmate/blob/main/src/test/ERC20.t.sol
     function testMetadata() public {
-        assertEq(token.name(), "Token");
-        assertEq(token.symbol(), "TKN");
-        assertEq(token.decimals(), 18);
+        assertEq(token.name(), NAME);
+        assertEq(token.symbol(), SYMBOL);
+        assertEq(token.decimals(), DECIMALS);
     }
 
     function testMint() public {
