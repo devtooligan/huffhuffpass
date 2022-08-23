@@ -506,7 +506,6 @@
     dup1 __FUNC_SIG(transfer)           eq transferJump         jumpi
     dup1 __FUNC_SIG(transferFrom)       eq transferFromJump     jumpi
     dup1 __FUNC_SIG(balanceOf)          eq balanceOfJump        jumpi
-    dup1 __FUNC_SIG(balanceOf)          eq balanceOfJump        jumpi
     dup1 __FUNC_SIG(totalSupply)        eq totalSupplyJump      jumpi
     dup1 __FUNC_SIG(approve)            eq approveJump          jumpi
     dup1 __FUNC_SIG(allowance)          eq allowanceJump        jumpi
